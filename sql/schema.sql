@@ -252,4 +252,105 @@ INSERT INTO `sys_notification` (`user_id`, `title`, `content`, `type`, `biz_id`,
 (5, '新任务待处理', '您有1条新的任务待处理：下水道堵塞', 'task', 2, 0),
 (3, '事件受理通知', '您上报的事件【路灯损坏】已受理', 'event', 1, 1);
 
+-- ---------------------------------------------
+-- 9. 周边资源：摄像头 resource_camera
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `resource_camera`;
+CREATE TABLE `resource_camera` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `camera_code` varchar(50) NOT NULL COMMENT '摄像头编号',
+  `camera_name` varchar(100) NOT NULL COMMENT '摄像头名称',
+  `camera_type` varchar(30) NOT NULL DEFAULT 'public' COMMENT '类型：public-公共治安 traffic-交通监控 private-小区监控',
+  `lng` decimal(10,6) NOT NULL COMMENT '经度',
+  `lat` decimal(10,6) NOT NULL COMMENT '纬度',
+  `address` varchar(255) DEFAULT NULL COMMENT '地址',
+  `rtsp_url` varchar(500) DEFAULT NULL COMMENT 'RTSP流地址',
+  `hls_url` varchar(500) DEFAULT NULL COMMENT 'HLS播放地址',
+  `grid_id` bigint(20) DEFAULT NULL COMMENT '所属网格ID',
+  `manufacturer` varchar(100) DEFAULT NULL COMMENT '厂商(海康/大华等)',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '0-离线 1-在线',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`), UNIQUE KEY `uk_camera_code` (`camera_code`),
+  KEY `idx_lng_lat` (`lng`,`lat`), KEY `idx_grid_id` (`grid_id`), KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='周边资源-摄像头';
+
+-- ---------------------------------------------
+-- 10. 周边资源：应急物资 resource_emergency
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `resource_emergency`;
+CREATE TABLE `resource_emergency` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `resource_code` varchar(50) NOT NULL COMMENT '物资编号',
+  `resource_name` varchar(100) NOT NULL COMMENT '物资名称(消防栓/灭火器/AED急救箱/应急包等)',
+  `resource_type` varchar(30) NOT NULL COMMENT 'fire_fighting-消防 first_aid-急救 flood_ctr-防汛 medical-医疗 rescue-救援',
+  `quantity` int(11) NOT NULL DEFAULT 1 COMMENT '数量',
+  `lng` decimal(10,6) NOT NULL COMMENT '经度',
+  `lat` decimal(10,6) NOT NULL COMMENT '纬度',
+  `address` varchar(255) DEFAULT NULL COMMENT '位置',
+  `grid_id` bigint(20) DEFAULT NULL COMMENT '所属网格',
+  `manager` varchar(50) DEFAULT NULL COMMENT '管理员姓名',
+  `manager_phone` varchar(20) DEFAULT NULL COMMENT '管理员电话',
+  `expire_date` date DEFAULT NULL COMMENT '有效期',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '0-不可用 1-可用 2-用完',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`), UNIQUE KEY `uk_resource_code` (`resource_code`),
+  KEY `idx_lng_lat` (`lng`,`lat`), KEY `idx_grid_id` (`grid_id`), KEY `idx_type` (`resource_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='周边资源-应急物资';
+
+-- ---------------------------------------------
+-- 11. 网格员实时位置 grid_member_location
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `grid_member_location`;
+CREATE TABLE `grid_member_location` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '网格员用户ID',
+  `user_name` varchar(50) DEFAULT NULL COMMENT '网格员姓名',
+  `phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
+  `grid_id` bigint(20) DEFAULT NULL COMMENT '所属网格',
+  `lng` decimal(10,6) NOT NULL COMMENT '当前经度',
+  `lat` decimal(10,6) NOT NULL COMMENT '当前纬度',
+  `address` varchar(255) DEFAULT NULL COMMENT '位置描述',
+  `on_duty` tinyint(4) NOT NULL DEFAULT 0 COMMENT '0-离岗 1-在岗',
+  `last_report_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后上报时间',
+  `accuracy` decimal(10,2) DEFAULT NULL COMMENT '定位精度(米)',
+  `battery` int(11) DEFAULT NULL COMMENT '设备电量',
+  PRIMARY KEY (`id`), UNIQUE KEY `uk_user_id` (`user_id`),
+  KEY `idx_lng_lat` (`lng`,`lat`), KEY `idx_grid_id` (`grid_id`), KEY `idx_on_duty` (`on_duty`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='网格员实时位置';
+
+-- ---------------------------------------------
+-- 周边资源示例数据：摄像头
+-- ---------------------------------------------
+INSERT INTO `resource_camera` (`id`, `camera_code`, `camera_name`, `camera_type`, `lng`, `lat`, `address`, `rtsp_url`, `hls_url`, `grid_id`, `manufacturer`, `status`) VALUES
+(1, 'CAM001', '长安街东口摄像头', 'public',   116.408400, 39.905200, '东长安街与王府井交叉口东', 'rtsp://192.168.1.101:554/stream1', 'http://192.168.1.101/hls/stream1.m3u8', 1, '海康威视', 1),
+(2, 'CAM002', '建国门路口监控',   'traffic',  116.418400, 39.915200, '建国门内大街与朝阳门南小街交叉口', 'rtsp://192.168.1.102:554/stream1', 'http://192.168.1.102/hls/stream1.m3u8', 2, '大华', 1),
+(3, 'CAM003', '阳光小区门口',     'private',  116.406400, 39.903200, '阳光小区北门', 'rtsp://192.168.1.103:554/stream1', 'http://192.168.1.103/hls/stream1.m3u8', 1, '海康威视', 1),
+(4, 'CAM004', '文化广场中心',     'public',   116.409400, 39.906200, '城东文化广场中央', 'rtsp://192.168.1.104:554/stream1', NULL, 1, '海康威视', 0),
+(5, 'CAM005', '地铁口A出口',      'traffic',  116.419400, 39.916200, '建国门地铁站A出口', 'rtsp://192.168.1.105:554/stream1', 'http://192.168.1.105/hls/stream1.m3u8', 2, '大华', 1);
+
+-- ---------------------------------------------
+-- 周边资源示例数据：应急物资
+-- ---------------------------------------------
+INSERT INTO `resource_emergency` (`id`, `resource_code`, `resource_name`, `resource_type`, `quantity`, `lng`, `lat`, `address`, `grid_id`, `manager`, `manager_phone`, `expire_date`, `status`, `remark`) VALUES
+(1, 'EMG001', '室外消防栓',   'fire_fighting', 1,  116.407800, 39.904800, '长安街1号门口东侧', 1, '张三', '13900000011', NULL, 1, '水压正常，去年年检合格'),
+(2, 'EMG002', '手提式灭火器', 'fire_fighting', 10, 116.408800, 39.905800, '城东社区服务中心门口', 1, '李四', '13900000012', '2027-06-30', 1, 'ABC干粉灭火器，有效期至2027年'),
+(3, 'EMG003', 'AED除颤仪',   'first_aid',     1,  116.417800, 39.914800, '建国门社区医院大厅', 2, '王医生', '13900000013', '2028-12-31', 1, '飞利浦品牌，每月巡检'),
+(4, 'EMG004', '急救箱',       'first_aid',     3,  116.406800, 39.903800, '阳光小区物业办公室', 1, '物业王姐', '13900000014', '2026-12-31', 1, '内含绷带、消毒棉片等常用药品'),
+(5, 'EMG005', '防汛沙袋',     'flood_ctr',     50, 116.418800, 39.915800, '建国门地下通道入口处', 2, '赵主任', '13900000015', NULL, 1, '雨季专用，存放在通道西侧库房'),
+(6, 'EMG006', '救援绳索套装', 'rescue',        2,  116.409800, 39.906800, '城东消防站', 1, '消防刘队', '13900000016', NULL, 1, '50米安全绳+挂钩+安全带'),
+(7, 'EMG007', '应急照明手电', 'rescue',        20, 116.416800, 39.913800, '第二网格居委会', 2, '孙主任', '13900000017', '2029-01-01', 1, 'LED强光手电，备用电池充足');
+
+-- ---------------------------------------------
+-- 网格员实时位置示例数据
+-- ---------------------------------------------
+INSERT INTO `grid_member_location` (`id`, `user_id`, `user_name`, `phone`, `grid_id`, `lng`, `lat`, `address`, `on_duty`, `last_report_time`, `accuracy`, `battery`) VALUES
+(1, 2, '网格长张三', '13900000002', 1, 116.407000, 39.904000, '城东第一网格居委会', 1, '2024-01-01 09:28:00', 5.50, 78),
+(2, 3, '网格员李四', '13900000003', 1, 116.408500, 39.905500, '王府井步行街北口', 1, '2024-01-01 09:30:00', 3.20, 85),
+(3, 4, '网格员王五', '13900000004', 2, 116.417600, 39.914600, '建国门内大街地铁站附近', 1, '2024-01-01 09:29:00', 4.80, 62);
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -54,6 +54,13 @@ public class NotificationController {
         return Result.success();
     }
 
+    @ApiOperation("一键呼叫网格员")
+    @PostMapping("/call/{userId}")
+    public Result<Void> callMember(@PathVariable Long userId) {
+        notificationService.callMember(userId);
+        return Result.success("呼叫通知已发送");
+    }
+
     private Long getCurrentUserId(HttpServletRequest request) {
         String userIdStr = request.getHeader("X-User-Id");
         if (userIdStr != null && !userIdStr.isEmpty()) {

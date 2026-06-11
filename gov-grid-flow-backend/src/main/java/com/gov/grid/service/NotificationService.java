@@ -18,4 +18,6 @@ public interface NotificationService {
     Long getUnreadCount(Long userId);
 
     PageResult<SysNotification> getNotificationList(Long userId, Integer pageNum, Integer pageSize);
+
+    void callMember(Long userId);
 }

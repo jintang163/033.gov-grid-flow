@@ -207,3 +207,30 @@ export const getMemberList = (gridId) => {
     params: { gridId }
   })
 }
+
+// ===== 周边资源 =====
+// 获取500米内周边资源（摄像头/应急物资/网格员）
+export const getNearbyResources = (params) => {
+  return request({
+    url: '/nearby/resources',
+    method: 'get',
+    params
+  })
+}
+
+// 网格员上报位置（移动端心跳上报，可设置5分钟一次）
+export const reportMemberLocation = (data) => {
+  return request({
+    url: '/nearby/member/location/report',
+    method: 'post',
+    data
+  })
+}
+
+// 一键呼叫网格员（基于VOIP/微信通话/拨打电话）
+export const callMember = (userId) => {
+  return request({
+    url: `/notification/call/${userId}`,
+    method: 'post'
+  })
+}

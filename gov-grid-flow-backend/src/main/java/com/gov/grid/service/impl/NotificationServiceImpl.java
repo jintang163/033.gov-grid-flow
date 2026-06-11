@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.entity.SysNotification;
+import com.gov.grid.entity.SysUser;
 import com.gov.grid.mapper.SysNotificationMapper;
+import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final RocketMQTemplate rocketMQTemplate;
     private final SysNotificationMapper notificationMapper;
+    private final SysUserMapper sysUserMapper;
 
     @Override
     public void sendNotification(Long userId, String title, String content, String type, String bizId) {
@@ -112,5 +115,29 @@ public class NotificationServiceImpl implements NotificationService {
 
         Page<SysNotification> result = notificationMapper.selectPage(page, wrapper);
         return PageResult.of(result.getTotal(), result.getRecords(), currentPage, currentSize);
+    }
+
+    @Override
+    public void callMember(Long userId) {
+        if (userId == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("网格员不存在");
+        }
+
+        String userName = user.getRealName() != null ? user.getRealName() : user.getUsername();
+        String title = "调度呼叫通知";
+        String content = "指挥中心向您发起调度呼叫，请尽快前往事件现场处置！";
+
+        sendNotification(userId, title, content, "DISPATCH_CALL", String.valueOf(userId));
+
+        if (user.getPhone() != null && !user.getPhone().isEmpty()) {
+            String smsContent = "【网格化管理】" + userName + "您好，指挥中心向您发起调度呼叫，请尽快处理！";
+            sendSms(user.getPhone(), smsContent);
+        }
+
+        log.info("一键呼叫网格员完成，userId：{}，userName：{}，phone：{}", userId, userName, user.getPhone());
     }
 }

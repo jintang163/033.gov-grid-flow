@@ -64,6 +64,57 @@
           </div>
         </van-cell-group>
 
+        <van-cell-group v-if="form.lng" inset title="周边资源（500米内）" style="margin-top: 12px">
+          <van-cell title="摄像头" :value="`${nearbyResources.cameraCount}个`" is-link>
+            <template #icon><van-icon name="eye-o" color="#1989fa" /></template>
+          </van-cell>
+          <div v-if="nearbyResources.cameraCount>0" class="resource-list">
+            <div v-for="cam in nearbyResources.cameras.slice(0,3)" :key="cam.id" class="resource-item">
+              <span class="res-name">{{ cam.cameraName }}</span>
+              <span class="res-distance">{{ cam.distance }}米</span>
+              <span :class="['res-status', cam.status===1?'online':'offline']">
+                {{ cam.status===1?'在线':'离线' }}
+              </span>
+            </div>
+          </div>
+
+          <van-cell title="应急物资" :value="`${nearbyResources.emergencyCount}处`" is-link>
+            <template #icon><van-icon name="fire-o" color="#ee0a24" /></template>
+          </van-cell>
+          <div v-if="nearbyResources.emergencyCount>0" class="resource-list">
+            <div v-for="em in nearbyResources.emergencies.slice(0,3)" :key="em.id" class="resource-item">
+              <span class="res-name">{{ em.resourceName }}({{ em.quantity }})</span>
+              <span class="res-distance">{{ em.distance }}米</span>
+              <span class="res-type">{{ em.resourceTypeName }}</span>
+            </div>
+          </div>
+
+          <van-cell title="附近网格员" :value="`${nearbyResources.memberCount}人在岗`" is-link>
+            <template #icon><van-icon name="friends-o" color="#07c160" /></template>
+          </van-cell>
+          <div v-if="nearbyResources.memberCount>0" class="resource-list">
+            <div v-for="m in nearbyResources.members.slice(0,3)" :key="m.userId" class="resource-item">
+              <span class="res-name">{{ m.userName }}</span>
+              <span class="res-distance">{{ m.distance }}米</span>
+              <a :href="`tel:${m.phone}`" class="call-link" @click.stop>
+                <van-icon name="phone-o" />呼叫
+              </a>
+            </div>
+          </div>
+
+          <div class="map-preview-panel">
+            <div class="map-legend">
+              <span><i class="dot camera"></i>摄像头</span>
+              <span><i class="dot emergency"></i>应急物资</span>
+              <span><i class="dot member"></i>网格员</span>
+              <span><i class="dot event"></i>事件点</span>
+            </div>
+            <div class="map-canvas-hint">
+              接入高德地图SDK后可展示图标分布（高德 JS API 2.0 AMap.Marker）
+            </div>
+          </div>
+        </van-cell-group>
+
         <van-cell-group inset title="事件描述" style="margin-top: 12px">
           <van-field
             v-model="form.description"
@@ -199,10 +250,10 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList } from '@/api'
+import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources } from '@/api'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
 
 const router = useRouter()
@@ -219,6 +270,16 @@ const uploadedImages = ref([])
 const uploadedVideos = ref([])
 const gridList = ref([])
 const gridColumns = ref([])
+
+const nearbyResources = reactive({
+  cameras: [],
+  emergencies: [],
+  members: [],
+  cameraCount: 0,
+  emergencyCount: 0,
+  memberCount: 0,
+  loading: false
+})
 
 const form = reactive({
   title: '',
@@ -258,6 +319,12 @@ const priorityColumns = [
 onMounted(() => {
   fetchEventTypeList()
   fetchGridList()
+})
+
+watch([() => form.lng, () => form.lat], ([newLng, newLat]) => {
+  if (newLng && newLat) {
+    fetchNearbyResources(newLng, newLat)
+  }
 })
 
 const fetchEventTypeList = async () => {
@@ -336,10 +403,35 @@ const getLocation = async () => {
     const address = await getAddressByLngLat(lng, lat)
     form.address = address.formattedAddress || `${lng}, ${lat}`
     showMap.value = true
+    fetchNearbyResources(form.lng, form.lat)
     showToast({ type: 'success', message: '位置获取成功' })
   } catch (e) {
     console.error(e)
     showToast('获取位置失败，请手动输入或检查定位权限')
+  }
+}
+
+const fetchNearbyResources = async (lng, lat) => {
+  try {
+    nearbyResources.loading = true
+    const res = await getNearbyResources({ lng, lat, radius: 500 })
+    const data = res.data || {}
+    nearbyResources.cameras = data.cameras || []
+    nearbyResources.emergencies = data.emergencies || []
+    nearbyResources.members = data.members || []
+    nearbyResources.cameraCount = data.cameraCount || 0
+    nearbyResources.emergencyCount = data.emergencyCount || 0
+    nearbyResources.memberCount = data.memberCount || 0
+  } catch (e) {
+    console.error('Fetch nearby resources failed', e)
+    nearbyResources.cameras = []
+    nearbyResources.emergencies = []
+    nearbyResources.members = []
+    nearbyResources.cameraCount = 0
+    nearbyResources.emergencyCount = 0
+    nearbyResources.memberCount = 0
+  } finally {
+    nearbyResources.loading = false
   }
 }
 
@@ -583,5 +675,130 @@ const onSubmit = async () => {
 
 .submit-btn-wrap {
   padding: 24px 16px 16px;
+}
+
+.resource-list {
+  padding: 8px 16px 12px;
+  background-color: #fafafa;
+
+  .resource-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background-color: #fff;
+    border-radius: 6px;
+    margin-bottom: 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .res-name {
+    flex: 1;
+    font-size: 14px;
+    color: #323233;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 12px;
+  }
+
+  .res-distance {
+    font-size: 13px;
+    color: #646566;
+    margin-right: 12px;
+  }
+
+  .res-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+
+    &.online {
+      color: #07c160;
+      background-color: #e8f7ee;
+    }
+
+    &.offline {
+      color: #969799;
+      background-color: #f2f3f5;
+    }
+  }
+
+  .res-type {
+    font-size: 12px;
+    color: #ff976a;
+    background-color: #fff4ed;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .call-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #1989fa;
+    text-decoration: none;
+
+    .van-icon {
+      font-size: 14px;
+    }
+  }
+}
+
+.map-preview-panel {
+  margin: 12px 16px 16px;
+  padding: 12px;
+  background-color: #f7f8fa;
+  border-radius: 8px;
+  border: 1px dashed #dcdee0;
+
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 10px;
+
+    span {
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      color: #646566;
+
+      .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 4px;
+
+        &.camera {
+          background-color: #1989fa;
+        }
+
+        &.emergency {
+          background-color: #ee0a24;
+        }
+
+        &.member {
+          background-color: #07c160;
+        }
+
+        &.event {
+          background-color: #ff976a;
+        }
+      }
+    }
+  }
+
+  .map-canvas-hint {
+    font-size: 12px;
+    color: #969799;
+    text-align: center;
+    padding: 8px 0;
+  }
 }
 </style>

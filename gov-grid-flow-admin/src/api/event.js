@@ -124,3 +124,28 @@ export function getEventHistory(eventId) {
     method: 'get'
   })
 }
+
+// ===== 周边资源 =====
+// 获取500米内周边资源（摄像头/应急物资/网格员）
+export const getNearbyResources = (params) => {
+  return request({
+    url: '/nearby/resources',
+    method: 'get',
+    params
+  })
+}
+// 一键呼叫网格员
+export const callMember = (userId) => {
+  return request({
+    url: `/notification/call/${userId}`,
+    method: 'post'
+  })
+}
+// 网格员位置上报
+export const reportMemberLocation = (data) => {
+  return request({
+    url: '/nearby/member/location/report',
+    method: 'post',
+    data
+  })
+}

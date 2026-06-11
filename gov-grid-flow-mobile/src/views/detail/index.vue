@@ -177,6 +177,80 @@
         </van-cell-group>
       </div>
 
+      <!-- 周边资源调度 -->
+      <van-cell-group v-if="detail.lng" inset title="周边资源调度（500米）" style="margin-top:12px">
+        <van-cell title="周边摄像头" :label="`${nearbyData.cameraCount}个`">
+          <template #icon><van-icon name="eye-o" color="#1989fa" size="20"/></template>
+          <template #right-icon>
+            <van-tag color="#e6f7ff" text-color="#1989fa" size="medium">查看</van-tag>
+          </template>
+        </van-cell>
+        <div v-if="nearbyData.cameras.length" class="nearby-grid">
+          <div v-for="cam in nearbyData.cameras.slice(0,4)" :key="cam.id" class="nearby-item cam-item">
+            <div class="item-head">
+              <van-icon name="eye-o" color="#1989fa"/>
+              <span class="item-name">{{ cam.cameraName }}</span>
+            </div>
+            <div class="item-meta">
+              <span>{{ cam.distance }}米</span>
+              <span :class="cam.status===1?'tag-green':'tag-gray'">
+                {{ cam.status===1?'在线':'离线' }}
+              </span>
+            </div>
+            <a v-if="cam.hlsUrl" :href="cam.hlsUrl" target="_blank" class="play-link">
+              <van-icon name="play-circle-o"/> 查看直播
+            </a>
+          </div>
+        </div>
+
+        <van-cell title="应急物资点" :label="`${nearbyData.emergencyCount}处`">
+          <template #icon><van-icon name="fire-o" color="#ee0a24" size="20"/></template>
+        </van-cell>
+        <div v-if="nearbyData.emergencies.length" class="nearby-grid">
+          <div v-for="item in nearbyData.emergencies.slice(0,4)" :key="item.id" class="nearby-item em-item">
+            <div class="item-head">
+              <van-icon name="fire-o" color="#ee0a24"/>
+              <span class="item-name">{{ item.resourceName }}</span>
+              <van-tag size="mini" type="warning">x{{ item.quantity }}</van-tag>
+            </div>
+            <div class="item-meta">
+              <span>{{ item.distance }}米</span>
+              <span class="tag-type">{{ item.resourceTypeName }}</span>
+            </div>
+            <div v-if="item.managerPhone" class="call-manager">
+              <a :href="`tel:${item.managerPhone}`" @click.stop>
+                <van-icon name="phone-o"/> 联系管理员 {{ item.manager }}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <van-cell title="附近网格员" :label="`${nearbyData.memberCount}人在岗`" @click="showCallSheet=true">
+          <template #icon><van-icon name="friends-o" color="#07c160" size="20"/></template>
+          <template #right-icon>
+            <van-button size="small" type="success" round plain @click.stop="showCallSheet=true">
+              <van-icon name="phone-o"/> 一键呼叫
+            </van-button>
+          </template>
+        </van-cell>
+        <div v-if="nearbyData.members.length" class="nearby-grid">
+          <div v-for="mem in nearbyData.members.slice(0,4)" :key="mem.userId" class="nearby-item mem-item">
+            <van-avatar :size="48" color="#07c160">{{ mem.userName.charAt(0) }}</van-avatar>
+            <div class="mem-info">
+              <div class="mem-name">{{ mem.userName }}</div>
+              <div class="mem-meta">
+                <span>{{ mem.distance }}米</span>
+                <span>⚡{{ mem.battery }}%</span>
+                <span class="tag-green">在岗</span>
+              </div>
+            </div>
+            <a :href="`tel:${mem.phone}`" class="call-btn" @click.stop>
+              <van-icon name="phone-o" size="20"/>
+            </a>
+          </div>
+        </div>
+      </van-cell-group>
+
       <div v-if="showActions" class="action-section">
         <template v-if="canVerify">
           <van-button block round type="success" size="large" @click="handleVerify">
@@ -335,6 +409,14 @@
       </div>
     </van-popup>
 
+    <!-- 呼叫网格员 ActionSheet -->
+    <van-action-sheet v-model:show="showCallSheet" title="选择呼叫的网格员" :actions="nearbyData.members.map(m=>({
+      name: `${m.userName}（${m.distance}米）`,
+      subname: `${m.phone} · 电量${m.battery}%`,
+      callback: () => handleCall(m)
+    }))">
+    </van-action-sheet>
+
     <van-image-preview
       v-model:show="previewVisible"
       :images="previewImages"
@@ -344,7 +426,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showConfirmDialog, showImagePreview } from 'vant'
 import {
@@ -356,7 +438,9 @@ import {
   rejectEvent,
   assignEvent,
   submitEvaluation as apiSubmitEvaluation,
-  getMemberList
+  getMemberList,
+  getNearbyResources,
+  callMember
 } from '@/api'
 import { useUserStore } from '@/store'
 
@@ -395,6 +479,19 @@ const returnForm = ref({
 const rejectForm = ref({
   reason: ''
 })
+
+const nearbyLoading = ref(false)
+const nearbyData = reactive({
+  radius: 500,
+  cameraCount: 0,
+  emergencyCount: 0,
+  memberCount: 0,
+  cameras: [],
+  emergencies: [],
+  members: []
+})
+const showCallSheet = ref(false)
+const showResourceMap = ref(false)
 
 const statusMap = {
   PENDING: { text: '待受理', tag: 'warning' },
@@ -558,11 +655,42 @@ const fetchDetail = async () => {
   try {
     const res = await getEventDetail(route.params.id)
     detail.value = res.data
+    if (detail.value.lng && detail.value.lat) {
+      await fetchNearbyResources(detail.value.lng, detail.value.lat)
+    }
   } catch (e) {
     console.warn('Load event detail failed, using mock data', e)
     detail.value = getMockDetail()
+    if (detail.value.lng && detail.value.lat) {
+      await fetchNearbyResources(detail.value.lng, detail.value.lat)
+    }
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchNearbyResources(lng, lat) {
+  nearbyLoading.value = true
+  try {
+    const res = await getNearbyResources({ lng, lat, radius: 500 })
+    if (res.data) {
+      Object.assign(nearbyData, res.data)
+    }
+  } catch (e) {
+    console.warn('周边资源查询失败', e)
+  } finally {
+    nearbyLoading.value = false
+  }
+}
+
+async function handleCall(member) {
+  try {
+    await callMember(member.userId)
+  } catch(e) {}
+  if (member.phone) {
+    window.location.href = `tel:${member.phone}`
+  } else {
+    showToast('该网格员暂无手机号')
   }
 }
 
@@ -1236,5 +1364,38 @@ onMounted(() => {
 
 .return-actions {
   padding: 20px 16px 0;
+}
+
+.nearby-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fafbfc;
+}
+.nearby-item {
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #f0f0f0;
+  .item-head {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 6px; font-weight: 500;
+    .item-name { font-size: 13px; color: #333; }
+  }
+  .item-meta {
+    display: flex; gap: 8px; font-size: 12px; color: #969799;
+    margin-bottom: 4px;
+  }
+}
+.tag-green { color:#07c160; background:#eefbf3; padding:1px 6px; border-radius:4px; font-size:11px; }
+.tag-gray { color:#969799; background:#f2f3f5; padding:1px 6px; border-radius:4px; font-size:11px; }
+.tag-type { color:#7232dd; background:#f5efff; padding:1px 6px; border-radius:4px; font-size:11px; }
+.play-link { font-size: 12px; color: #1989fa; text-decoration: none; }
+.call-manager a { font-size: 12px; color: #1989fa; text-decoration: none; }
+.mem-item {
+  display: flex; align-items: center; gap: 10px;
+  .mem-info { flex:1; .mem-name {font-weight:500;font-size:13px;} .mem-meta{font-size:11px;color:#969799;display:flex;gap:6px;margin-top:2px;}}
+  .call-btn { width:36px; height:36px; border-radius:50%; background:#07c160; display:flex; align-items:center; justify-content:center; color:#fff; }
 }
 </style>

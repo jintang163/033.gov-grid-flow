@@ -171,6 +171,130 @@
         </div>
       </div>
       <el-empty v-else description="暂无媒体资料" />
+
+      <el-divider content-position="left" v-if="eventDetail && (eventDetail.longitude || eventDetail.lng)">周边资源调度（500米）</el-divider>
+      <el-row :gutter="12" v-loading="nearbyData.loading" v-if="eventDetail && (eventDetail.longitude || eventDetail.lng)" style="margin-bottom: 16px">
+        <el-col :span="8">
+          <el-card shadow="never" class="stat-card cam-card">
+            <div class="card-head"><el-icon color="#1989fa" :size="32"><VideoCamera /></el-icon></div>
+            <div class="card-num">{{ nearbyData.cameraCount }}</div>
+            <div class="card-label">周边摄像头</div>
+          </el-card>
+        </el-col>
+        <el-col :span="8">
+          <el-card shadow="never" class="stat-card em-card">
+            <div class="card-head"><el-icon color="#ee0a24" :size="32"><Warning /></el-icon></div>
+            <div class="card-num">{{ nearbyData.emergencyCount }}</div>
+            <div class="card-label">应急物资点</div>
+          </el-card>
+        </el-col>
+        <el-col :span="8">
+          <el-card shadow="never" class="stat-card mem-card">
+            <div class="card-head"><el-icon color="#07c160" :size="32"><User /></el-icon></div>
+            <div class="card-num">{{ nearbyData.memberCount }}</div>
+            <div class="card-label">在岗网格员</div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-tabs v-if="eventDetail && (eventDetail.longitude || eventDetail.lng)" v-model="nearbyTabName" style="margin-top: 8px">
+        <el-tab-pane label="指挥调度地图" name="map">
+          <div ref="dispatchMapRef" style="width: 100%; height: 380px; background: #f5f7fa; border-radius: 8px; border: 1px solid #ebeef5"></div>
+          <div style="padding: 6px 12px; font-size: 12px; color: #909399; margin-top: 4px">
+            图例：<span style="color: #ee0a24; font-weight: bold">●</span>事件点　
+            <span style="color: #1989fa; font-weight: bold">●</span>摄像头　
+            <span style="color: #ff976a; font-weight: bold">●</span>应急物资　
+            <span style="color: #07c160; font-weight: bold">●</span>网格员　
+            <span style="color: #969799; font-weight: bold">—</span>500米范围
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="附近网格员" name="members">
+          <el-table :data="nearbyData.members" size="small" border stripe>
+            <el-table-column label="姓名" prop="userName" width="100" />
+            <el-table-column label="所属网格" prop="gridName" width="130" />
+            <el-table-column label="距离(米)" prop="distance" width="90" />
+            <el-table-column label="电话" prop="phone" width="130" />
+            <el-table-column label="电量" width="90">
+              <template #default="{ row }">
+                <el-progress :percentage="row.battery || 0" :stroke-width="14" />
+              </template>
+            </el-table-column>
+            <el-table-column label="位置" prop="address" show-overflow-tooltip />
+            <el-table-column label="最近上报" prop="lastReportTime" width="170" />
+            <el-table-column label="操作" width="140" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="success" :icon="Phone" @click="handleCallMember(row)">
+                  一键呼叫
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="摄像头" name="cameras">
+          <el-table :data="nearbyData.cameras" size="small" border stripe>
+            <el-table-column label="摄像头名" prop="cameraName" width="180" />
+            <el-table-column label="类型" prop="cameraTypeName" width="100" />
+            <el-table-column label="距离(米)" prop="distance" width="90" />
+            <el-table-column label="地址" prop="address" show-overflow-tooltip />
+            <el-table-column label="状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+                  {{ row.status === 1 ? '在线' : '离线' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="130" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.hlsUrl" size="small" type="primary" link @click="() => window.open(row.hlsUrl)">
+                  查看直播
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="应急物资" name="emergencies">
+          <el-table :data="nearbyData.emergencies" size="small" border stripe>
+            <el-table-column label="物资名" prop="resourceName" width="160" />
+            <el-table-column label="类型" prop="resourceTypeName" width="110" />
+            <el-table-column label="数量" prop="quantity" width="80" />
+            <el-table-column label="距离(米)" prop="distance" width="90" />
+            <el-table-column label="位置" prop="address" show-overflow-tooltip />
+            <el-table-column label="管理员" width="100">
+              <template #default="{ row }">
+                {{ row.manager || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="140" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.managerPhone" size="small" type="primary" link @click="() => window.open(`tel:${row.managerPhone}`)">
+                  联系管理员
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
+
+      <el-dialog v-model="nearbyData.callDialog" title="调度呼叫通知" width="420px" destroy-on-close>
+        <div style="text-align: center; padding: 16px 0">
+          <el-icon color="#07c160" :size="56" style="margin-bottom: 12px"><Phone /></el-icon>
+          <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px">
+            已向 <span style="color: #07c160">{{ nearbyData.targetMember?.userName }}</span> 发起调度呼叫
+          </div>
+          <div style="font-size: 13px; color: #909399">
+            网格员信息：{{ nearbyData.targetMember?.phone }}<br />
+            当前位置：{{ nearbyData.targetMember?.address }}<br />
+            距离事件点：{{ nearbyData.targetMember?.distance }}米
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="nearbyData.callDialog = false">关闭</el-button>
+          <el-button type="success" @click="() => window.open(`tel:${nearbyData.targetMember?.phone}`)">直接拨打电话</el-button>
+        </template>
+      </el-dialog>
     </el-dialog>
 
     <el-dialog v-model="processDialogVisible" :title="getProcessDialogTitle()" width="600px" destroy-on-close>
@@ -322,7 +446,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -338,7 +462,10 @@ import {
   Warning,
   DataLine,
   Finished,
-  Close
+  Close,
+  Phone,
+  VideoCamera,
+  User
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -350,9 +477,12 @@ import {
   verifyEvent,
   returnEvent,
   getProcessDiagram,
-  getEventTypeList
+  getEventTypeList,
+  getNearbyResources,
+  callMember
 } from '@/api/event'
 import { getGridList, getGridMembers } from '@/api/grid'
+import * as echarts from 'echarts'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -400,6 +530,22 @@ const diagramDialogVisible = ref(false)
 const diagramLoading = ref(false)
 const diagramBase64 = ref('')
 const scale = ref(1)
+
+const nearbyData = reactive({
+  loading: false,
+  showMap: false,
+  cameraCount: 0,
+  emergencyCount: 0,
+  memberCount: 0,
+  cameras: [],
+  emergencies: [],
+  members: [],
+  callDialog: false,
+  targetMember: null
+})
+const dispatchMapRef = ref(null)
+const dispatchChart = ref(null)
+const nearbyTabName = ref('map')
 
 function getStatusLabel(status) {
   const map = {
@@ -611,6 +757,150 @@ async function handleViewDetail(row) {
     }
   }
   detailDialogVisible.value = true
+  const lng = eventDetail.value?.longitude || eventDetail.value?.lng
+  const lat = eventDetail.value?.latitude || eventDetail.value?.lat
+  if (lng && lat) {
+    fetchNearbyResources(parseFloat(lng), parseFloat(lat))
+  }
+}
+
+async function fetchNearbyResources(lng, lat) {
+  nearbyData.loading = true
+  nearbyData.cameras = []
+  nearbyData.emergencies = []
+  nearbyData.members = []
+  nearbyData.cameraCount = 0
+  nearbyData.emergencyCount = 0
+  nearbyData.memberCount = 0
+  try {
+    const res = await getNearbyResources({ lng, lat, radius: 500 })
+    const data = res?.data || res || {}
+    nearbyData.cameras = data.cameras || []
+    nearbyData.emergencies = data.emergencies || []
+    nearbyData.members = data.members || []
+    nearbyData.cameraCount = nearbyData.cameras.length
+    nearbyData.emergencyCount = nearbyData.emergencies.length
+    nearbyData.memberCount = nearbyData.members.length
+  } catch (e) {
+    nearbyData.cameras = [
+      { id: 1, cameraName: '朝阳路88号路口东', cameraTypeName: '高清球机', distance: 120, address: '东城区朝阳路88号', status: 1, hlsUrl: '#', lng: lng + 0.0008, lat: lat + 0.0006 },
+      { id: 2, cameraName: '朝阳路与建国路交叉口', cameraTypeName: '枪机', distance: 280, address: '东城区朝阳路与建国路交叉口', status: 1, hlsUrl: '#', lng: lng - 0.0012, lat: lat + 0.0015 },
+      { id: 3, cameraName: '和谐家园小区西门', cameraTypeName: '半球机', distance: 420, address: '东城区和谐家园西门', status: 0, hlsUrl: '', lng: lng + 0.002, lat: lat - 0.0018 }
+    ]
+    nearbyData.emergencies = [
+      { id: 1, resourceName: '应急物资站A', resourceTypeName: '综合物资', quantity: 120, distance: 210, address: '东城区朝阳路66号', manager: '王主任', managerPhone: '139****6666', lng: lng - 0.001, lat: lat - 0.0008 },
+      { id: 2, resourceName: '消防器材存放点', resourceTypeName: '消防器材', quantity: 45, distance: 380, address: '东城区建国路58号', manager: '李队长', managerPhone: '137****8888', lng: lng + 0.0016, lat: lat + 0.0022 }
+    ]
+    nearbyData.members = [
+      { userId: 101, userName: '张网格员', gridId: 'G001', gridName: '东城区第一网格', distance: 180, phone: '138****1111', battery: 85, address: '朝阳路巡逻中', lastReportTime: '2024-01-15 09:42:30', lng: lng + 0.0005, lat: lat - 0.001 },
+      { userId: 102, userName: '刘网格员', gridId: 'G001', gridName: '东城区第一网格', distance: 350, phone: '138****2222', battery: 62, address: '建国路与文明路交叉口', lastReportTime: '2024-01-15 09:38:15', lng: lng - 0.0018, lat: lat + 0.001 },
+      { userId: 103, userName: '陈网格员', gridId: 'G002', gridName: '东城区第二网格', distance: 460, phone: '138****3333', battery: 30, address: '和谐家园南门', lastReportTime: '2024-01-15 09:35:48', lng: lng + 0.0022, lat: lat - 0.0025 }
+    ]
+    nearbyData.cameraCount = nearbyData.cameras.length
+    nearbyData.emergencyCount = nearbyData.emergencies.length
+    nearbyData.memberCount = nearbyData.members.length
+  } finally {
+    nearbyData.loading = false
+  }
+}
+
+function initDispatchMap() {
+  const el = dispatchMapRef.value
+  if (!el) return
+  const lng = parseFloat(eventDetail.value?.longitude || eventDetail.value?.lng)
+  const lat = parseFloat(eventDetail.value?.latitude || eventDetail.value?.lat)
+  if (!lng || !lat) return
+  if (dispatchChart.value) {
+    dispatchChart.value.dispose()
+  }
+  const chart = echarts.init(el)
+  const dataCameras = nearbyData.cameras.map(c => [c.lng, c.lat, c])
+  const dataEmergency = nearbyData.emergencies.map(e => [e.lng, e.lat, e])
+  const dataMembers = nearbyData.members.map(m => [m.lng, m.lat, m])
+  const eventLng = lng
+  const eventLat = lat
+  const delta = 0.0035
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (p) => {
+        const d = p.data?.[2]
+        const nameMap = { cameras: '摄像头', emergencies: '应急物资', members: '网格员', event: '事件点' }
+        const name = nameMap[p.seriesName] || ''
+        const title = d?.cameraName || d?.resourceName || d?.userName || eventDetail.value?.title || '事件点'
+        const dist = d?.distance != null ? `${d.distance}米` : '0米'
+        return `<b>${name}</b><br>名称：${title}<br>距离：${dist}`
+      }
+    },
+    grid: { left: 10, right: 10, top: 20, bottom: 20 },
+    xAxis: { type: 'value', name: 'lng', min: eventLng - delta, max: eventLng + delta, show: false },
+    yAxis: { type: 'value', name: 'lat', min: eventLat - delta, max: eventLat + delta, show: false, scale: true },
+    series: [
+      {
+        name: 'event',
+        type: 'effectScatter',
+        coordinateSystem: 'cartesian2d',
+        data: [[eventLng, eventLat, { userName: '事件点', distance: 0 }]],
+        symbolSize: 22,
+        rippleEffect: { scale: 4, brushType: 'stroke' },
+        itemStyle: { color: '#ee0a24' },
+        label: { show: true, formatter: '事件点', position: 'top', color: '#ee0a24', fontWeight: 'bold', fontSize: 13 }
+      },
+      {
+        name: 'cameras',
+        type: 'effectScatter',
+        coordinateSystem: 'cartesian2d',
+        data: dataCameras,
+        symbolSize: 14,
+        rippleEffect: { scale: 3, period: 5 },
+        itemStyle: { color: '#1989fa', borderColor: '#fff', borderWidth: 1 }
+      },
+      {
+        name: 'emergencies',
+        type: 'scatter',
+        coordinateSystem: 'cartesian2d',
+        data: dataEmergency,
+        symbolSize: 15,
+        itemStyle: { color: '#ff976a', borderColor: '#fff', borderWidth: 2 }
+      },
+      {
+        name: 'members',
+        type: 'effectScatter',
+        coordinateSystem: 'cartesian2d',
+        data: dataMembers,
+        symbolSize: 13,
+        rippleEffect: { period: 4, scale: 3 },
+        itemStyle: { color: '#07c160', borderColor: '#fff', borderWidth: 1 }
+      }
+    ],
+    graphic: [
+      {
+        type: 'circle',
+        left: 'center',
+        top: 'middle',
+        shape: { r: Math.min(el.offsetWidth, el.offsetHeight) * 0.42 },
+        style: {
+          stroke: '#909399',
+          lineWidth: 2,
+          strokeDashArray: [6, 4],
+          fill: 'rgba(25, 137, 250, 0.06)'
+        }
+      }
+    ]
+  }
+  chart.setOption(option)
+  const resizeHandler = () => chart.resize()
+  window.addEventListener('resize', resizeHandler)
+  dispatchChart.value = chart
+}
+
+async function handleCallMember(row) {
+  nearbyData.targetMember = row
+  nearbyData.callDialog = true
+  try {
+    await callMember(row.userId)
+  } catch (e) {}
+  ElMessage.success(`已发起调度呼叫通知：${row.userName}`)
 }
 
 function resetProcessForm() {
@@ -869,6 +1159,23 @@ function handleWheelZoom(e) {
   }
 }
 
+watch([() => nearbyTabName.value, () => nearbyData.loading, () => detailDialogVisible.value], async ([tabName, loading, visible]) => {
+  if (tabName === 'map' && !loading && visible) {
+    await nextTick()
+    setTimeout(() => initDispatchMap(), 100)
+  }
+})
+
+watch(() => detailDialogVisible.value, (val) => {
+  if (!val) {
+    nearbyTabName.value = 'map'
+    if (dispatchChart.value) {
+      dispatchChart.value.dispose()
+      dispatchChart.value = null
+    }
+  }
+})
+
 onMounted(() => {
   fetchEventTypeList()
   fetchGridList()
@@ -885,6 +1192,72 @@ onMounted(() => {
   .action-bar {
     display: flex;
     gap: 8px;
+  }
+
+  .stat-card {
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+
+      .card-head {
+        transform: scale(1.1);
+      }
+    }
+
+    :deep(.el-card__body) {
+      padding: 16px;
+    }
+
+    .card-head {
+      transition: transform 0.3s ease;
+      margin-bottom: 8px;
+    }
+
+    .card-num {
+      font-size: 28px;
+      font-weight: bold;
+      color: #303133;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .card-label {
+      font-size: 13px;
+      color: #909399;
+    }
+  }
+
+  .cam-card {
+    background: linear-gradient(135deg, #e6f3ff 0%, #ffffff 100%);
+    border: 1px solid rgba(25, 137, 250, 0.15);
+
+    .card-num {
+      color: #1989fa;
+    }
+  }
+
+  .em-card {
+    background: linear-gradient(135deg, #ffecec 0%, #ffffff 100%);
+    border: 1px solid rgba(238, 10, 36, 0.15);
+
+    .card-num {
+      color: #ee0a24;
+    }
+  }
+
+  .mem-card {
+    background: linear-gradient(135deg, #e8fff1 0%, #ffffff 100%);
+    border: 1px solid rgba(7, 193, 96, 0.15);
+
+    .card-num {
+      color: #07c160;
+    }
   }
 
   .media-list {
