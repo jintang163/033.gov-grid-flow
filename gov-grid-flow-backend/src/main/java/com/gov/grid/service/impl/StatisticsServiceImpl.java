@@ -6,6 +6,9 @@ import com.gov.grid.entity.EventInfo;
 import com.gov.grid.entity.EventProcess;
 import com.gov.grid.entity.GridInfo;
 import com.gov.grid.entity.SysDept;
+import com.gov.grid.entity.SysUser;
+import com.gov.grid.enums.EventStatus;
+import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.mapper.EventEvaluationMapper;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
@@ -52,19 +55,18 @@ public class StatisticsServiceImpl implements StatisticsService {
         vo.setTotalEvents(eventInfoMapper.selectCount(totalWrapper));
 
         LambdaQueryWrapper<EventInfo> pendingWrapper = new LambdaQueryWrapper<>();
-        pendingWrapper.eq(EventInfo::getStatus, "PENDING");
+        pendingWrapper.eq(EventInfo::getStatus, EventStatus.PENDING.getCode());
         vo.setPendingCount(eventInfoMapper.selectCount(pendingWrapper));
 
         LambdaQueryWrapper<EventInfo> processingWrapper = new LambdaQueryWrapper<>();
         processingWrapper.and(w -> w
-                .eq(EventInfo::getStatus, "PROCESSING")
-                .or().eq(EventInfo::getStatus, "APPROVED")
-                .or().eq(EventInfo::getStatus, "DISPATCHED")
-                .or().eq(EventInfo::getStatus, "HANDLED"));
+                .eq(EventInfo::getStatus, EventStatus.APPROVED.getCode())
+                .or().eq(EventInfo::getStatus, EventStatus.DISPATCHED.getCode())
+                .or().eq(EventInfo::getStatus, EventStatus.HANDLED.getCode()));
         vo.setProcessingCount(eventInfoMapper.selectCount(processingWrapper));
 
         LambdaQueryWrapper<EventInfo> completedWrapper = new LambdaQueryWrapper<>();
-        completedWrapper.eq(EventInfo::getStatus, "COMPLETED");
+        completedWrapper.eq(EventInfo::getStatus, EventStatus.COMPLETED.getCode());
         Long completedCount = eventInfoMapper.selectCount(completedWrapper);
         vo.setCompletedCount(completedCount);
 
@@ -95,7 +97,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             LambdaQueryWrapper<EventInfo> completedWrapper = new LambdaQueryWrapper<>();
             completedWrapper.ge(EventInfo::getUpdatedAt, dayStart)
                     .lt(EventInfo::getUpdatedAt, dayEnd)
-                    .eq(EventInfo::getStatus, "COMPLETED");
+                    .eq(EventInfo::getStatus, EventStatus.COMPLETED.getCode());
             Long completedCount = eventInfoMapper.selectCount(completedWrapper);
 
             EventTrendVO vo = new EventTrendVO();
@@ -145,7 +147,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<DeptStatsVO> result = new ArrayList<>();
 
         List<EventInfo> allCompletedEvents = eventInfoMapper.selectList(
-                new LambdaQueryWrapper<EventInfo>().eq(EventInfo::getStatus, "COMPLETED"));
+                new LambdaQueryWrapper<EventInfo>().eq(EventInfo::getStatus, EventStatus.COMPLETED.getCode()));
 
         List<EventEvaluation> allEvaluations = evaluationMapper.selectList(null);
         Map<Long, EventEvaluation> evalMap = allEvaluations.stream()
@@ -184,7 +186,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 }
 
                 long rejectCount = processes.stream()
-                        .filter(p -> "REJECT".equals(p.getAction()) || "RETURN".equals(p.getAction()))
+                        .filter(p -> ProcessAction.REJECT.getCode().equals(p.getAction()))
                         .count();
                 if (rejectCount > 0) {
                     reworkCount++;
@@ -242,17 +244,19 @@ public class StatisticsServiceImpl implements StatisticsService {
             vo.setTotalCount((long) gridEvents.size());
 
             long pendingCount = gridEvents.stream()
-                    .filter(e -> "PENDING".equals(e.getStatus()))
+                    .filter(e -> EventStatus.PENDING.getCode().equals(e.getStatus()))
                     .count();
             vo.setPendingCount(pendingCount);
 
             long processingCount = gridEvents.stream()
-                    .filter(e -> !"PENDING".equals(e.getStatus()) && !"COMPLETED".equals(e.getStatus()) && !"REJECTED".equals(e.getStatus()))
+                    .filter(e -> !EventStatus.PENDING.getCode().equals(e.getStatus())
+                            && !EventStatus.COMPLETED.getCode().equals(e.getStatus())
+                            && !EventStatus.REJECTED.getCode().equals(e.getStatus()))
                     .count();
             vo.setProcessingCount(processingCount);
 
             long completedCount = gridEvents.stream()
-                    .filter(e -> "COMPLETED".equals(e.getStatus()))
+                    .filter(e -> EventStatus.COMPLETED.getCode().equals(e.getStatus()))
                     .count();
             vo.setCompletedCount(completedCount);
 
@@ -277,7 +281,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private Double calculateAvgHandleTime() {
         LambdaQueryWrapper<EventInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(EventInfo::getStatus, "COMPLETED");
+        wrapper.eq(EventInfo::getStatus, EventStatus.COMPLETED.getCode());
         List<EventInfo> completedEvents = eventInfoMapper.selectList(wrapper);
 
         if (completedEvents.isEmpty()) {
@@ -326,7 +330,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private Double calculateReworkRate() {
         LambdaQueryWrapper<EventInfo> eventWrapper = new LambdaQueryWrapper<>();
-        eventWrapper.eq(EventInfo::getStatus, "COMPLETED");
+        eventWrapper.eq(EventInfo::getStatus, EventStatus.COMPLETED.getCode());
         Long totalCompleted = eventInfoMapper.selectCount(eventWrapper);
 
         if (totalCompleted == 0) {
@@ -334,8 +338,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
 
         LambdaQueryWrapper<EventProcess> processWrapper = new LambdaQueryWrapper<>();
-        processWrapper.eq(EventProcess::getAction, "REJECT")
-                .or().eq(EventProcess::getAction, "RETURN");
+        processWrapper.eq(EventProcess::getAction, ProcessAction.REJECT.getCode());
         List<EventProcess> rejectProcesses = eventProcessMapper.selectList(processWrapper);
         long reworkEventCount = rejectProcesses.stream()
                 .map(EventProcess::getEventId)
@@ -350,8 +353,8 @@ public class StatisticsServiceImpl implements StatisticsService {
         Map<Long, List<Long>> deptEventMap = new HashMap<>();
 
         LambdaQueryWrapper<EventProcess> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(EventProcess::getAction, "DISPATCH")
-                .or().eq(EventProcess::getAction, "ASSIGN")
+        wrapper.eq(EventProcess::getAction, ProcessAction.DISPATCH.getCode())
+                .or().eq(EventProcess::getAction, ProcessAction.ASSIGN.getCode())
                 .orderByAsc(EventProcess::getCreatedAt);
         List<EventProcess> dispatchProcesses = eventProcessMapper.selectList(wrapper);
 

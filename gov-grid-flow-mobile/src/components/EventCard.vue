@@ -52,14 +52,11 @@ const router = useRouter()
 
 const statusMap = {
   PENDING: { text: '待受理', type: 'warning' },
-  APPROVED: { text: '已审核', type: 'primary' },
-  PROCESSING: { text: '处理中', type: 'primary' },
-  DISPOSING: { text: '处置中', type: 'primary' },
-  VERIFYING: { text: '核查中', type: 'warning' },
-  COMPLETED: { text: '已完成', type: 'success' },
-  REJECTED: { text: '已驳回', type: 'danger' },
-  RETURNED: { text: '已退回', type: 'danger' },
-  CLOSED: { text: '已关闭', type: 'default' }
+  APPROVED: { text: '已受理', type: 'primary' },
+  DISPATCHED: { text: '已分派', type: 'primary' },
+  HANDLED: { text: '已处置', type: 'success' },
+  COMPLETED: { text: '已办结', type: 'success' },
+  REJECTED: { text: '已驳回', type: 'danger' }
 }
 
 const eventTypeMap = {

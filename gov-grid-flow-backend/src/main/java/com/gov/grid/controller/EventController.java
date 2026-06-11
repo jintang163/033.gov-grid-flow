@@ -6,6 +6,8 @@ import com.gov.grid.dto.EventProcessDTO;
 import com.gov.grid.dto.EventQueryDTO;
 import com.gov.grid.dto.EventReportDTO;
 import com.gov.grid.entity.EventInfo;
+import com.gov.grid.enums.EventStatus;
+import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
 import com.gov.grid.vo.EventDetailVO;
@@ -73,7 +75,7 @@ public class EventController {
     @GetMapping("/my-done")
     public Result<PageResult<EventInfo>> getMyDone(EventQueryDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setStatus("COMPLETED");
+        dto.setStatus(EventStatus.COMPLETED.getCode());
         PageResult<EventInfo> pageResult = eventService.getEventList(dto);
         return Result.success(pageResult);
     }
@@ -130,7 +132,7 @@ public class EventController {
     @PostMapping("/approve")
     public Result<Void> approve(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setAction("APPROVE");
+        dto.setAction(ProcessAction.APPROVE.getCode());
         eventProcessService.processEvent(dto, userId);
         return Result.success("审核通过成功", null);
     }
@@ -139,7 +141,7 @@ public class EventController {
     @PostMapping("/verify")
     public Result<Void> verify(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setAction("VERIFY");
+        dto.setAction(ProcessAction.VERIFY.getCode());
         eventProcessService.processEvent(dto, userId);
         return Result.success("核查通过成功", null);
     }
@@ -148,7 +150,7 @@ public class EventController {
     @PostMapping("/process")
     public Result<Void> process(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setAction("HANDLE");
+        dto.setAction(ProcessAction.HANDLE.getCode());
         eventProcessService.processEvent(dto, userId);
         return Result.success("处置完成成功", null);
     }
@@ -157,7 +159,7 @@ public class EventController {
     @PostMapping("/return")
     public Result<Void> returnTask(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setAction("REJECT");
+        dto.setAction(ProcessAction.REJECT.getCode());
         eventProcessService.processEvent(dto, userId);
         return Result.success("退回成功", null);
     }

@@ -63,8 +63,7 @@ const defaultSteps = [
   { key: 'APPROVE', title: '审核受理' },
   { key: 'ASSIGN', title: '任务分派' },
   { key: 'PROCESS', title: '部门处置' },
-  { key: 'VERIFY', title: '结果核查' },
-  { key: 'COMPLETE', title: '事件完成' }
+  { key: 'COMPLETE', title: '事件办结' }
 ]
 
 const stepList = computed(() => {
@@ -93,10 +92,10 @@ const activeStep = computed(() => {
   const statusStepMap = {
     PENDING: 0,
     APPROVED: 1,
-    PROCESSING: 2,
-    DISPOSING: 3,
-    VERIFYING: 4,
-    COMPLETED: 5
+    DISPATCHED: 2,
+    HANDLED: 3,
+    COMPLETED: 4,
+    REJECTED: 0
   }
   return statusStepMap[props.status] ?? 0
 })

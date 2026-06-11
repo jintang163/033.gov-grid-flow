@@ -201,8 +201,8 @@
           </el-form-item>
         </template>
         <template v-else-if="processType === 'assign'">
-          <el-form-item label="处置员" prop="handlerId">
-            <el-select v-model="processForm.handlerId" placeholder="请选择处置员" filterable style="width: 100%">
+          <el-form-item label="处置员" prop="assigneeId">
+            <el-select v-model="processForm.assigneeId" placeholder="请选择处置员" filterable style="width: 100%">
               <el-option
                 v-for="member in gridMembers"
                 :key="member.id"
@@ -384,13 +384,13 @@ const currentEvent = ref(null)
 const processForm = reactive({
   eventId: '',
   comment: '',
-  handlerId: '',
+  assigneeId: '',
   result: 'PASS',
   fileList: []
 })
 const processRules = {
   comment: [{ required: true, message: '请输入处理意见', trigger: 'blur' }],
-  handlerId: [{ required: true, message: '请选择处置员', trigger: 'change' }]
+  assigneeId: [{ required: true, message: '请选择处置员', trigger: 'change' }]
 }
 
 const historyDialogVisible = ref(false)
@@ -616,7 +616,7 @@ async function handleViewDetail(row) {
 function resetProcessForm() {
   processForm.eventId = ''
   processForm.comment = ''
-  processForm.handlerId = ''
+  processForm.assigneeId = ''
   processForm.result = 'PASS'
   processForm.fileList = []
 }
@@ -666,7 +666,7 @@ function handleVerify(row) {
 async function submitProcess() {
   if (!processFormRef.value) return
   try {
-    const validFields = processType.value === 'assign' ? ['comment', 'handlerId'] : ['comment']
+    const validFields = processType.value === 'assign' ? ['comment', 'assigneeId'] : ['comment']
     await processFormRef.value.validateField(validFields)
   } catch (e) {
     return
@@ -684,7 +684,8 @@ async function submitProcess() {
       apiFn = rejectEvent
     } else if (processType.value === 'assign') {
       apiFn = assignEvent
-      data.handlerId = processForm.handlerId
+      data.assigneeId = processForm.assigneeId
+      data.taskId = currentEvent.value.taskId
     } else if (processType.value === 'process') {
       apiFn = processEvent
     } else if (processType.value === 'verify') {

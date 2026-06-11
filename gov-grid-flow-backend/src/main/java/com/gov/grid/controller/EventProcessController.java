@@ -51,7 +51,7 @@ public class EventProcessController {
     @PostMapping("/reject")
     public Result<Void> rejectTask(@Validated @RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        dto.setAction("REJECT");
+        dto.setAction(ProcessAction.REJECT.getCode());
         eventProcessService.processEvent(dto, userId);
         return Result.success("任务退回成功", null);
     }

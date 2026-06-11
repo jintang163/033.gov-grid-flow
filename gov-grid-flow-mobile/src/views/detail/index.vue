@@ -397,17 +397,12 @@ const rejectForm = ref({
 })
 
 const statusMap = {
-  PENDING_REPORT: { text: '待上报', tag: 'default' },
-  PENDING_VERIFY: { text: '待核查', tag: 'warning' },
-  PENDING_APPROVE: { text: '待审核', tag: 'warning' },
-  PENDING_ASSIGN: { text: '待分派', tag: 'primary' },
-  PENDING_PROCESS: { text: '待处置', tag: 'warning' },
-  PROCESSING: { text: '处理中', tag: 'primary' },
-  PENDING_EVALUATE: { text: '待评价', tag: 'success' },
+  PENDING: { text: '待受理', tag: 'warning' },
+  APPROVED: { text: '已受理', tag: 'primary' },
+  DISPATCHED: { text: '已分派', tag: 'primary' },
+  HANDLED: { text: '已处置', tag: 'success' },
   COMPLETED: { text: '已办结', tag: 'success' },
-  REJECTED: { text: '已驳回', tag: 'danger' },
-  RETURNED: { text: '已退回', tag: 'danger' },
-  CANCELLED: { text: '已取消', tag: 'default' }
+  REJECTED: { text: '已驳回', tag: 'danger' }
 }
 
 const priorityMap = {
@@ -464,26 +459,26 @@ const currentUserRole = computed(() => userStore.userRole || '')
 const currentUserId = computed(() => userStore.userInfo?.id || '')
 
 const canVerify = computed(() => {
-  return currentUserRole.value === 'worker' && detail.value?.status === 'PENDING_VERIFY'
+  return currentUserRole.value === 'worker' && detail.value?.status === 'HANDLED'
 })
 
 const canApprove = computed(() => {
-  return currentUserRole.value === 'grid_leader' && detail.value?.status === 'PENDING_APPROVE'
+  return currentUserRole.value === 'grid_leader' && detail.value?.status === 'PENDING'
 })
 
 const canProcess = computed(() => {
-  return currentUserRole.value === 'handler' && detail.value?.status === 'PENDING_PROCESS'
+  return currentUserRole.value === 'handler' && detail.value?.status === 'DISPATCHED'
 })
 
 const canAssign = computed(() => {
   const isAdmin = currentUserRole.value === 'admin' || currentUserRole.value === 'grid_leader'
-  return isAdmin && detail.value?.status === 'PENDING_ASSIGN'
+  return isAdmin && detail.value?.status === 'APPROVED'
 })
 
 const canEvaluate = computed(() => {
   const isReporter = detail.value?.reporterId === currentUserId.value ||
     detail.value?.reporterPhone === userStore.userPhone
-  return (detail.value?.status === 'COMPLETED' || detail.value?.status === 'PENDING_EVALUATE') && isReporter
+  return detail.value?.status === 'COMPLETED' && isReporter
 })
 
 const showActions = computed(() => {
@@ -493,6 +488,8 @@ const showActions = computed(() => {
 const buildDefaultProcessList = () => {
   const d = detail.value
   const list = []
+  const statusOrder = ['PENDING', 'APPROVED', 'DISPATCHED', 'HANDLED', 'COMPLETED']
+  const currentIdx = statusOrder.indexOf(d?.status)
   list.push({
     nodeName: '事件上报',
     handlerName: d?.reporterName || d?.reporter || '匿名用户',
@@ -501,42 +498,32 @@ const buildDefaultProcessList = () => {
     comment: d?.description ? '事件已提交' : '',
     attachments: null
   })
-  if (d?.verifyTime || ['PENDING_APPROVE', 'PENDING_ASSIGN', 'PENDING_PROCESS', 'PROCESSING', 'PENDING_EVALUATE', 'COMPLETED'].includes(d?.status)) {
+  if (d?.approveTime || currentIdx >= 1) {
     list.push({
-      nodeName: '网格员核查',
-      handlerName: d?.verifierName || '-',
-      handleTime: d?.verifyTime || '待核查',
-      status: d?.verifyTime ? 'COMPLETED' : 'PROCESSING',
-      comment: d?.verifyComment || '',
-      attachments: null
-    })
-  }
-  if (d?.approveTime || ['PENDING_ASSIGN', 'PENDING_PROCESS', 'PROCESSING', 'PENDING_EVALUATE', 'COMPLETED'].includes(d?.status)) {
-    list.push({
-      nodeName: '网格长审核',
+      nodeName: '网格长受理',
       handlerName: d?.approverName || '-',
-      handleTime: d?.approveTime || '待审核',
-      status: d?.approveTime ? 'COMPLETED' : 'PROCESSING',
+      handleTime: d?.approveTime || '待受理',
+      status: d?.approveTime ? 'COMPLETED' : 'PENDING',
       comment: d?.approveComment || '',
       attachments: null
     })
   }
-  if (d?.assignTime || ['PENDING_PROCESS', 'PROCESSING', 'PENDING_EVALUATE', 'COMPLETED'].includes(d?.status)) {
+  if (d?.assignTime || currentIdx >= 2) {
     list.push({
       nodeName: '任务分派',
       handlerName: d?.assignerName || '-',
       handleTime: d?.assignTime || '待分派',
-      status: d?.assignTime ? 'COMPLETED' : 'PROCESSING',
+      status: d?.assignTime ? 'COMPLETED' : 'PENDING',
       comment: d?.assignComment || (d?.handlerName ? `分派给：${d.handlerName}` : ''),
       attachments: null
     })
   }
-  if (d?.processTime || ['PENDING_EVALUATE', 'COMPLETED'].includes(d?.status)) {
+  if (d?.processTime || currentIdx >= 3) {
     list.push({
       nodeName: '事件处置',
       handlerName: d?.handlerName || '-',
       handleTime: d?.processTime || '待处置',
-      status: d?.processTime ? 'COMPLETED' : 'PROCESSING',
+      status: d?.processTime ? 'COMPLETED' : 'PENDING',
       comment: d?.processComment || '',
       attachments: d?.processAttachments || null
     })
@@ -548,6 +535,16 @@ const buildDefaultProcessList = () => {
       handleTime: d?.finishTime || d?.completeTime,
       status: 'COMPLETED',
       comment: d?.evaluationScore ? `已评价：${d.evaluationScore}分` : '事件已完成',
+      attachments: null
+    })
+  }
+  if (d?.status === 'REJECTED') {
+    list.push({
+      nodeName: '已驳回',
+      handlerName: d?.approverName || '-',
+      handleTime: d?.rejectTime || d?.approveTime,
+      status: 'REJECTED',
+      comment: d?.rejectComment || d?.approveComment || '',
       attachments: null
     })
   }
@@ -576,7 +573,7 @@ const getMockDetail = () => ({
   eventType: 'environment',
   eventTypeText: '环境卫生',
   priority: 'HIGH',
-  status: 'PENDING_VERIFY',
+  status: 'HANDLED',
   description: 'XX小区东门门口垃圾堆积未及时清理，已有3天时间，天气炎热产生异味，严重影响居民出行和生活环境，请相关部门尽快处理。',
   createTime: '2024-01-15 10:30:25',
   reportTime: '2024-01-15 10:30:25',
@@ -660,26 +657,24 @@ const parseAttachments = (attachments) => {
 const getNodeClass = (node) => {
   const s = node?.status || ''
   if (s === 'COMPLETED') return 'node-completed'
-  if (s === 'PROCESSING') return 'node-processing'
-  if (s === 'REJECTED' || s === 'RETURNED') return 'node-rejected'
+  if (s === 'PENDING') return 'node-processing'
+  if (s === 'REJECTED') return 'node-rejected'
   return 'node-pending'
 }
 
 const getNodeTagType = (node) => {
   const s = node?.status || ''
   if (s === 'COMPLETED') return 'success'
-  if (s === 'PROCESSING') return 'primary'
-  if (s === 'REJECTED' || s === 'RETURNED') return 'danger'
+  if (s === 'PENDING') return 'primary'
+  if (s === 'REJECTED') return 'danger'
   return 'default'
 }
 
 const getNodeStatusText = (node) => {
   const map = {
     COMPLETED: '已完成',
-    PROCESSING: '进行中',
-    PENDING: '待处理',
-    REJECTED: '已驳回',
-    RETURNED: '已退回'
+    PENDING: '进行中',
+    REJECTED: '已驳回'
   }
   return map[node?.status] || '待处理'
 }

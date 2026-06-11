@@ -150,7 +150,7 @@ const mockRecent = [
     description: 'XX路段路灯损坏，夜间存在安全隐患',
     eventType: 'public_facility',
     priority: 'normal',
-    status: 'PROCESSING',
+    status: 'DISPATCHED',
     address: 'XX路与YY路交叉口',
     createTime: '2024-01-14 16:20:00',
     images: ''
@@ -161,7 +161,7 @@ const mockRecent = [
     description: '人行道井盖缺失，存在安全隐患',
     eventType: 'public_facility',
     priority: 'HIGH',
-    status: 'ASSIGNED',
+    status: 'APPROVED',
     address: 'XX路30号门前',
     createTime: '2024-01-14 09:15:00',
     images: ''
@@ -172,7 +172,7 @@ const mockRecent = [
     description: '楼上住户夜间噪音扰民，多次沟通无果',
     eventType: 'dispute',
     priority: 'normal',
-    status: 'DONE',
+    status: 'COMPLETED',
     address: 'XX小区5号楼2单元',
     createTime: '2024-01-13 22:40:00',
     images: ''
@@ -183,7 +183,7 @@ const mockRecent = [
     description: '小区消防通道被私家车占用',
     eventType: 'safety_hazard',
     priority: 'URGENT',
-    status: 'DONE',
+    status: 'COMPLETED',
     address: 'XX小区西区北门',
     createTime: '2024-01-13 14:20:00',
     images: ''
@@ -213,21 +213,21 @@ const eventTypeColorMap = {
 }
 
 const statusTextMap = {
-  PENDING: '待分派',
-  ASSIGNED: '待处理',
-  PROCESSING: '处理中',
-  DONE: '已办结',
-  REJECTED: '已驳回',
-  RETURNED: '已退回'
+  PENDING: '待受理',
+  APPROVED: '已受理',
+  DISPATCHED: '已分派',
+  HANDLED: '已处置',
+  COMPLETED: '已办结',
+  REJECTED: '已驳回'
 }
 
 const statusTypeMap = {
   PENDING: 'warning',
-  ASSIGNED: 'primary',
-  PROCESSING: 'info',
-  DONE: 'success',
-  REJECTED: 'danger',
-  RETURNED: 'danger'
+  APPROVED: 'primary',
+  DISPATCHED: 'primary',
+  HANDLED: 'success',
+  COMPLETED: 'success',
+  REJECTED: 'danger'
 }
 
 const fetchStats = async () => {

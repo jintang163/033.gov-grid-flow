@@ -39,25 +39,9 @@ export function processEvent(data) {
   })
 }
 
-export function auditEvent(data) {
-  return request({
-    url: '/event/audit',
-    method: 'post',
-    data
-  })
-}
-
 export function assignEvent(data) {
   return request({
     url: '/event/assign',
-    method: 'post',
-    data
-  })
-}
-
-export function handleEvent(data) {
-  return request({
-    url: '/event/handle',
     method: 'post',
     data
   })
@@ -95,17 +79,9 @@ export function rejectEvent(data) {
   })
 }
 
-export function getEventProcessDiagram(processInstanceId) {
-  return request({
-    url: `/event/diagram/${processInstanceId}`,
-    method: 'get',
-    responseType: 'blob'
-  })
-}
-
 export function getProcessDiagram(eventId) {
   return request({
-    url: `/event/process-diagram/${eventId}`,
+    url: `/process/diagram/${eventId}`,
     method: 'get'
   })
 }
@@ -134,19 +110,11 @@ export function getMyDoneList(params) {
   })
 }
 
-export function approveEvent(data) {
+export function getMyReport(params) {
   return request({
-    url: '/event/approve',
-    method: 'post',
-    data
-  })
-}
-
-export function rejectEvent(data) {
-  return request({
-    url: '/event/reject',
-    method: 'post',
-    data
+    url: '/event/my-report',
+    method: 'get',
+    params
   })
 }
 
@@ -154,27 +122,5 @@ export function getEventHistory(eventId) {
   return request({
     url: `/process/history/${eventId}`,
     method: 'get'
-  })
-}
-
-export function getProcessDiagram(eventId) {
-  return request({
-    url: `/process/diagram/${eventId}`,
-    method: 'get'
-  })
-}
-
-export function getEventTypeList() {
-  return request({
-    url: '/event/type/list',
-    method: 'get'
-  })
-}
-
-export function getMyReport(params) {
-  return request({
-    url: '/event/my-report',
-    method: 'get',
-    params
   })
 }

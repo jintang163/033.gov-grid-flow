@@ -9,6 +9,8 @@ import com.gov.grid.dto.EventProcessDTO;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.entity.EventProcess;
 import com.gov.grid.entity.SysUser;
+import com.gov.grid.enums.EventStatus;
+import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
 import com.gov.grid.mapper.SysUserMapper;
@@ -89,22 +91,22 @@ public class EventProcessServiceImpl implements EventProcessService {
         eventProcessMapper.insert(process);
 
         Map<String, Object> variables = new HashMap<>();
-        if ("REJECT".equals(action)) {
+        if (ProcessAction.REJECT.getCode().equals(action)) {
             workflowService.rejectTask(taskId, String.valueOf(userId), dto.getComment());
-            eventService.updateEventStatus(dto.getEventId(), "REJECTED");
+            eventService.updateEventStatus(dto.getEventId(), EventStatus.REJECTED.getCode());
         } else {
-            if ("APPROVE".equals(action)) {
+            if (ProcessAction.APPROVE.getCode().equals(action)) {
                 variables.put("approved", true);
-                eventService.updateEventStatus(dto.getEventId(), "APPROVED");
-            } else if ("DISPATCH".equals(action)) {
+                eventService.updateEventStatus(dto.getEventId(), EventStatus.APPROVED.getCode());
+            } else if (ProcessAction.DISPATCH.getCode().equals(action)) {
                 variables.put("dispatched", true);
-                eventService.updateEventStatus(dto.getEventId(), "DISPATCHED");
-            } else if ("HANDLE".equals(action)) {
+                eventService.updateEventStatus(dto.getEventId(), EventStatus.DISPATCHED.getCode());
+            } else if (ProcessAction.HANDLE.getCode().equals(action)) {
                 variables.put("handleCompleted", true);
-                eventService.updateEventStatus(dto.getEventId(), "HANDLED");
-            } else if ("VERIFY".equals(action)) {
+                eventService.updateEventStatus(dto.getEventId(), EventStatus.HANDLED.getCode());
+            } else if (ProcessAction.VERIFY.getCode().equals(action)) {
                 variables.put("verifyPassed", true);
-                eventService.updateEventStatus(dto.getEventId(), "COMPLETED");
+                eventService.updateEventStatus(dto.getEventId(), EventStatus.COMPLETED.getCode());
             }
             workflowService.completeTask(taskId, String.valueOf(userId), variables);
         }
@@ -144,12 +146,12 @@ public class EventProcessServiceImpl implements EventProcessService {
         process.setNodeName("分派任务");
         process.setHandlerId(userId);
         process.setHandlerName(handlerName);
-        process.setAction("ASSIGN");
+        process.setAction(ProcessAction.ASSIGN.getCode());
         process.setComment("分派给：" + assignee.getRealName() + "(" + assigneeId + ")");
         process.setHandleTime(LocalDateTime.now());
         eventProcessMapper.insert(process);
 
-        eventInfo.setStatus("DISPATCHED");
+        eventInfo.setStatus(EventStatus.DISPATCHED.getCode());
         eventInfoMapper.updateById(eventInfo);
 
         log.info("任务分派成功，事件ID：{}，任务ID：{}，分派给：{}，操作人：{}", eventId, taskId, assigneeId, userId);
@@ -183,19 +185,10 @@ public class EventProcessServiceImpl implements EventProcessService {
     }
 
     private String resolveNodeName(String action) {
-        switch (action) {
-            case "APPROVE":
-                return "审核受理";
-            case "DISPATCH":
-                return "任务分派";
-            case "HANDLE":
-                return "事件处置";
-            case "VERIFY":
-                return "核查结案";
-            case "REJECT":
-                return "退回";
-            default:
-                return "处理";
+        ProcessAction processAction = ProcessAction.fromCode(action);
+        if (processAction != null) {
+            return processAction.getName();
         }
+        return "处理";
     }
 }

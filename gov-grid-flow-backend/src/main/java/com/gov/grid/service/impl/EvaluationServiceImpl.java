@@ -29,7 +29,7 @@ public class EvaluationServiceImpl implements EvaluationService {
             throw new BusinessException("事件不存在");
         }
 
-        if (!"COMPLETED".equals(eventInfo.getStatus())) {
+        if (!EventStatus.COMPLETED.getCode().equals(eventInfo.getStatus())) {
             throw new BusinessException("事件尚未结案，无法评价");
         }
 

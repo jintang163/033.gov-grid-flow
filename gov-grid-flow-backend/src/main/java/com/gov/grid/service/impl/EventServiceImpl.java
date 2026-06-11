@@ -12,6 +12,9 @@ import com.gov.grid.dto.EventReportDTO;
 import com.gov.grid.entity.EventEvaluation;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.entity.EventProcess;
+import com.gov.grid.enums.EventStatus;
+import com.gov.grid.enums.EventPriority;
+import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.mapper.EventEvaluationMapper;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
@@ -71,8 +74,8 @@ public class EventServiceImpl implements EventService {
         }
 
         eventInfo.setGridId(dto.getGridId());
-        eventInfo.setStatus("PENDING");
-        eventInfo.setPriority("NORMAL");
+        eventInfo.setStatus(EventStatus.PENDING.getCode());
+        eventInfo.setPriority(dto.getPriority() != null ? dto.getPriority() : EventPriority.NORMAL.getCode());
 
         eventInfoMapper.insert(eventInfo);
 
@@ -85,7 +88,7 @@ public class EventServiceImpl implements EventService {
         process.setTaskId("INIT");
         process.setNodeName("上报事件");
         process.setHandlerId(userId);
-        process.setAction("SUBMIT");
+        process.setAction(ProcessAction.SUBMIT.getCode());
         process.setComment("事件已上报，等待受理");
         process.setHandleTime(LocalDateTime.now());
         eventProcessMapper.insert(process);

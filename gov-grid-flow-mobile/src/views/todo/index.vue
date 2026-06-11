@@ -88,8 +88,7 @@ const statusColorMap = {
   DISPATCHED: '#7232dd',
   HANDLED: '#00c4b6',
   COMPLETED: '#07c160',
-  REJECTED: '#ee0a24',
-  PROCESSING: '#1989fa'
+  REJECTED: '#ee0a24'
 }
 
 const statusTextMap = {
@@ -98,8 +97,7 @@ const statusTextMap = {
   DISPATCHED: '已分派',
   HANDLED: '已处置',
   COMPLETED: '已办结',
-  REJECTED: '已驳回',
-  PROCESSING: '处理中'
+  REJECTED: '已驳回'
 }
 
 const eventTypeMap = {
