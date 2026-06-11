@@ -1,0 +1,25 @@
+{
+  "name": "gov-grid-flow-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "pinia": "^2.1.7",
+    "vant": "^4.8.0",
+    "axios": "^1.6.0",
+    "amap-js-api-loader": "^1.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0",
+    "postcss": "^8.4.32",
+    "postcss-px-to-viewport": "^1.1.1"
+  }
+}
