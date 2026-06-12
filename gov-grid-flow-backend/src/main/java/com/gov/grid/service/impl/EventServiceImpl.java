@@ -76,6 +76,7 @@ public class EventServiceImpl implements EventService {
         }
 
         eventInfo.setGridId(dto.getGridId());
+        eventInfo.setVoiceUrl(dto.getVoiceUrl());
         eventInfo.setStatus(EventStatus.PENDING.getCode());
         eventInfo.setPriority(dto.getPriority() != null ? dto.getPriority() : EventPriority.NORMAL.getCode());
 

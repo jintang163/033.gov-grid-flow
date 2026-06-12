@@ -32,6 +32,7 @@ public class FileServiceImpl implements FileService {
 
     private static final List<String> ALLOWED_IMAGE_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "webp");
     private static final List<String> ALLOWED_VIDEO_EXTENSIONS = Arrays.asList("mp4", "avi", "mov", "wmv", "flv", "mkv");
+    private static final List<String> ALLOWED_AUDIO_EXTENSIONS = Arrays.asList("mp3", "wav", "m4a", "aac", "ogg", "amr");
     private static final float IMAGE_COMPRESSION_QUALITY = 0.7f;
     private static final long IMAGE_COMPRESS_THRESHOLD = 500 * 1024;
 
@@ -146,10 +147,16 @@ public class FileServiceImpl implements FileService {
     }
 
     private boolean isAllowedExtension(String extension) {
-        return ALLOWED_IMAGE_EXTENSIONS.contains(extension) || ALLOWED_VIDEO_EXTENSIONS.contains(extension);
+        return ALLOWED_IMAGE_EXTENSIONS.contains(extension)
+                || ALLOWED_VIDEO_EXTENSIONS.contains(extension)
+                || ALLOWED_AUDIO_EXTENSIONS.contains(extension);
     }
 
     private boolean isImageFile(String extension) {
         return ALLOWED_IMAGE_EXTENSIONS.contains(extension);
+    }
+
+    private boolean isAudioFile(String extension) {
+        return ALLOWED_AUDIO_EXTENSIONS.contains(extension);
     }
 }

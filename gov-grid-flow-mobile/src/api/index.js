@@ -234,3 +234,17 @@ export const callMember = (userId) => {
     method: 'post'
   })
 }
+
+// 语音转文字
+export const transcribeVoice = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/asr/transcribe',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

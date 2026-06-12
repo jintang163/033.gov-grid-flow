@@ -62,6 +62,8 @@ public class FileController {
         if (contentType == null) {
             return false;
         }
-        return contentType.startsWith("image/") || contentType.startsWith("video/");
+        return contentType.startsWith("image/")
+                || contentType.startsWith("video/")
+                || contentType.startsWith("audio/");
     }
 }

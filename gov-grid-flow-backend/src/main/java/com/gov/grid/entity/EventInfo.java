@@ -42,6 +42,9 @@ public class EventInfo extends BaseEntity {
     @TableField("videos")
     private String videos;
 
+    @TableField("voice_url")
+    private String voiceUrl;
+
     @TableField("anonymous")
     private Integer anonymous;
 

@@ -80,6 +80,10 @@ file:
   access:
     prefix: /file
 
+asr:
+  mock:
+    enabled: true
+
 logging:
   level:
     root: info

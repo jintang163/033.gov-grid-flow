@@ -67,7 +67,7 @@
         </div>
       </div>
 
-      <div v-if="imageList.length > 0 || videoList.length > 0" class="section">
+      <div v-if="imageList.length > 0 || videoList.length > 0 || voiceUrl" class="section">
         <div class="section-title">媒体资料</div>
         <van-cell-group inset>
           <div v-if="imageList.length > 0" class="media-item">
@@ -101,6 +101,16 @@
                   webkit-playsinline
                 />
               </div>
+            </div>
+          </div>
+          <div v-if="voiceUrl" class="media-item">
+            <div class="media-label">
+              <van-icon name="voice" size="14" />
+              <span>语音描述</span>
+            </div>
+            <div class="voice-player-wrap">
+              <audio :src="voiceUrl" controls class="voice-player" />
+              <div class="voice-hint">语音转写内容供核验参考</div>
             </div>
           </div>
         </van-cell-group>
@@ -545,6 +555,10 @@ const videoList = computed(() => {
   return String(detail.value.videos).split(',').filter(Boolean)
 })
 
+const voiceUrl = computed(() => {
+  return detail.value?.voiceUrl || ''
+})
+
 const processList = computed(() => {
   if (detail.value?.processList && Array.isArray(detail.value.processList) && detail.value.processList.length > 0) {
     return detail.value.processList
@@ -703,6 +717,7 @@ const getMockDetail = () => ({
   priority: 'HIGH',
   status: 'HANDLED',
   description: 'XX小区东门门口垃圾堆积未及时清理，已有3天时间，天气炎热产生异味，严重影响居民出行和生活环境，请相关部门尽快处理。',
+  voiceUrl: '',
   createTime: '2024-01-15 10:30:25',
   reportTime: '2024-01-15 10:30:25',
   address: '浙江省杭州市西湖区XX街道XX小区东门',
@@ -1154,6 +1169,22 @@ onMounted(() => {
   width: 100%;
   max-height: 220px;
   display: block;
+}
+
+.voice-player-wrap {
+  margin-top: 8px;
+
+  .voice-player {
+    width: 100%;
+    height: 40px;
+    margin-bottom: 6px;
+  }
+
+  .voice-hint {
+    font-size: 12px;
+    color: #969799;
+    text-align: center;
+  }
 }
 
 .timeline-wrap {

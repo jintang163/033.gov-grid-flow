@@ -28,6 +28,8 @@ public class EventReportDTO {
 
     private List<String> videos;
 
+    private String voiceUrl;
+
     @NotNull(message = "是否匿名不能为空")
     private Integer anonymous;
 

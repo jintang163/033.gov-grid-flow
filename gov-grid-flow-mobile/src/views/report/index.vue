@@ -123,10 +123,48 @@
             label="描述"
             type="textarea"
             maxlength="500"
-            placeholder="请详细描述事件情况（最多500字）"
+            placeholder="请详细描述事件情况（最多500字），也可点击右侧语音按钮录入"
             show-word-limit
             :rules="[{ required: true, message: '请输入事件描述' }]"
           />
+          <div class="voice-input-wrap">
+            <div class="voice-input-hint">
+              <van-icon name="phone-o" size="14" />
+              <span>支持语音输入，说完自动转文字</span>
+            </div>
+            <div class="voice-record-area">
+              <div v-if="isRecording" class="recording-status">
+                <div class="recording-pulse"></div>
+                <span class="recording-time">{{ formatTime(recordingTime) }}</span>
+              </div>
+              <div v-else-if="voiceUrl" class="voice-preview">
+                <audio :src="voiceUrl" controls class="voice-player" />
+                <van-button size="small" type="danger" plain @click="clearVoice">
+                  <van-icon name="delete-o" />删除
+                </van-button>
+              </div>
+              <div v-else class="record-btn-wrap">
+                <van-button
+                  type="primary"
+                  round
+                  size="normal"
+                  icon="microphone"
+                  @touchstart.prevent="startRecording"
+                  @touchend.prevent="stopRecording"
+                  @mousedown.prevent="startRecording"
+                  @mouseup.prevent="stopRecording"
+                  @mouseleave.prevent="stopRecording"
+                >
+                  按住说话
+                </van-button>
+                <div class="record-tip">最长支持60秒语音</div>
+              </div>
+            </div>
+            <div v-if="transcribing" class="transcribing-hint">
+              <van-loading size="16px" color="#1989fa" />
+              <span>语音转文字中...</span>
+            </div>
+          </div>
         </van-cell-group>
 
         <van-cell-group inset title="附件上传" style="margin-top: 12px">
@@ -250,10 +288,10 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, watch } from 'vue'
+import { reactive, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources } from '@/api'
+import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice } from '@/api'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
 
 const router = useRouter()
@@ -280,6 +318,16 @@ const nearbyResources = reactive({
   memberCount: 0,
   loading: false
 })
+
+const isRecording = ref(false)
+const recordingTime = ref(0)
+const transcribing = ref(false)
+const voiceUrl = ref('')
+const voiceFile = ref(null)
+let mediaRecorder = null
+let audioChunks = []
+let recordingTimer = null
+const MAX_RECORDING_TIME = 60
 
 const form = reactive({
   title: '',
@@ -319,6 +367,15 @@ const priorityColumns = [
 onMounted(() => {
   fetchEventTypeList()
   fetchGridList()
+})
+
+onUnmounted(() => {
+  if (recordingTimer) {
+    clearInterval(recordingTimer)
+  }
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  }
 })
 
 watch([() => form.lng, () => form.lat], ([newLng, newLat]) => {
@@ -552,6 +609,116 @@ const onVideoDelete = (file, detail) => {
   uploadedVideos.value.splice(detail.index, 1)
 }
 
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+const startRecording = async () => {
+  if (isRecording.value) return
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+    mediaRecorder = new MediaRecorder(stream, { mimeType })
+    audioChunks = []
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data)
+      }
+    }
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: mimeType })
+      const ext = mimeType === 'audio/webm' ? 'webm' : 'm4a'
+      const file = new File([audioBlob], `voice_${Date.now()}.${ext}`, { type: mimeType })
+      voiceFile.value = file
+      await transcribeAndFill(file)
+      stream.getTracks().forEach(track => track.stop())
+    }
+
+    mediaRecorder.start()
+    isRecording.value = true
+    recordingTime.value = 0
+
+    recordingTimer = setInterval(() => {
+      recordingTime.value++
+      if (recordingTime.value >= MAX_RECORDING_TIME) {
+        stopRecording()
+      }
+    }, 1000)
+
+  } catch (e) {
+    console.error('录音失败', e)
+    showToast('无法访问麦克风，请检查权限设置')
+  }
+}
+
+const stopRecording = () => {
+  if (!isRecording.value || !mediaRecorder) return
+
+  if (recordingTimer) {
+    clearInterval(recordingTimer)
+    recordingTimer = null
+  }
+
+  if (recordingTime.value < 1) {
+    showToast('录音时间太短')
+    mediaRecorder.stop()
+    isRecording.value = false
+    audioChunks = []
+    return
+  }
+
+  mediaRecorder.stop()
+  isRecording.value = false
+}
+
+const transcribeAndFill = async (file) => {
+  transcribing.value = true
+  try {
+    const res = await transcribeVoice(file)
+    if (res.data) {
+      const transcribedText = res.data
+      if (transcribedText && transcribedText.length > 0) {
+        if (form.description && form.description.length > 0) {
+          form.description = form.description + ' ' + transcribedText
+        } else {
+          form.description = transcribedText
+        }
+        const objectUrl = URL.createObjectURL(file)
+        voiceUrl.value = objectUrl
+        showToast('语音转文字成功')
+      }
+    } else {
+      showToast('语音转文字失败')
+    }
+  } catch (e) {
+    console.error('语音转写失败', e)
+    showToast('语音转文字失败，请手动输入')
+  } finally {
+    transcribing.value = false
+  }
+}
+
+const clearVoice = () => {
+  voiceUrl.value = ''
+  voiceFile.value = null
+}
+
+const uploadVoiceFile = async () => {
+  if (!voiceFile.value) return ''
+  try {
+    const res = await uploadFile([voiceFile.value])
+    const urls = res.data || []
+    return urls.length > 0 ? urls[0] : ''
+  } catch (e) {
+    console.error('语音文件上传失败', e)
+    return ''
+  }
+}
+
 const onReset = () => {
   form.title = ''
   form.eventType = ''
@@ -569,6 +736,8 @@ const onReset = () => {
   videoList.value = []
   uploadedImages.value = []
   uploadedVideos.value = []
+  voiceUrl.value = ''
+  voiceFile.value = ''
   showMap.value = false
   formRef.value && formRef.value.resetValidation()
 }
@@ -576,6 +745,12 @@ const onReset = () => {
 const onSubmit = async () => {
   try {
     submitting.value = true
+
+    let uploadedVoiceUrl = ''
+    if (voiceFile.value) {
+      uploadedVoiceUrl = await uploadVoiceFile()
+    }
+
     const submitData = {
       title: form.title,
       eventType: form.eventType,
@@ -585,6 +760,7 @@ const onSubmit = async () => {
       address: form.address,
       images: uploadedImages.value,
       videos: uploadedVideos.value,
+      voiceUrl: uploadedVoiceUrl,
       anonymous: form.anonymous,
       priority: form.priority,
       gridId: form.gridId
@@ -658,6 +834,97 @@ const onSubmit = async () => {
   padding: 4px 16px 12px;
   font-size: 12px;
   color: #969799;
+}
+
+.voice-input-wrap {
+  padding: 8px 16px 16px;
+  background: #fafbfc;
+  border-top: 1px solid #f0f0f0;
+
+  .voice-input-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #969799;
+    margin-bottom: 12px;
+  }
+
+  .voice-record-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 0;
+  }
+
+  .record-btn-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .record-tip {
+      font-size: 12px;
+      color: #c8c9cc;
+    }
+  }
+
+  .recording-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+
+    .recording-pulse {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #ee0a24;
+      position: relative;
+      animation: record-pulse 1s infinite;
+    }
+
+    .recording-time {
+      font-size: 20px;
+      font-weight: bold;
+      color: #323233;
+      font-family: monospace;
+    }
+  }
+
+  .voice-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+
+    .voice-player {
+      flex: 1;
+      height: 40px;
+    }
+  }
+
+  .transcribing-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #1989fa;
+  }
+}
+
+@keyframes record-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(238, 10, 36, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(238, 10, 36, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(238, 10, 36, 0);
+  }
 }
 
 .anonymous-wrap {

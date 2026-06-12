@@ -111,6 +111,7 @@ CREATE TABLE `event_info` (
   `address`             varchar(255) DEFAULT NULL COMMENT '地址',
   `images`              text         DEFAULT NULL COMMENT '图片URL，多个逗号分隔',
   `videos`              text         DEFAULT NULL COMMENT '视频URL，多个逗号分隔',
+  `voice_url`           varchar(255) DEFAULT NULL COMMENT '语音描述URL',
   `anonymous`           tinyint(1)   NOT NULL DEFAULT 0 COMMENT '是否匿名：0-否 1-是',
   `reporter_id`         bigint(20)   DEFAULT NULL COMMENT '上报人ID',
   `reporter_name`       varchar(50)  DEFAULT NULL COMMENT '上报人姓名',
