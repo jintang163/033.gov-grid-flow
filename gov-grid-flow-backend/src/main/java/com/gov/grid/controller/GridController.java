@@ -8,9 +8,9 @@ import com.gov.grid.service.GridService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @Api(tags = "网格管理")
@@ -75,21 +75,24 @@ public class GridController {
 
     @ApiOperation("新增网格")
     @PostMapping
-    public Result<GridInfo> create(@RequestBody GridInfo gridInfo, HttpServletRequest request) {
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
+    public Result<GridInfo> create(@RequestBody GridInfo gridInfo) {
         GridInfo created = gridService.create(gridInfo);
         return Result.success(created);
     }
 
     @ApiOperation("修改网格")
     @PutMapping
-    public Result<GridInfo> update(@RequestBody GridInfo gridInfo, HttpServletRequest request) {
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
+    public Result<GridInfo> update(@RequestBody GridInfo gridInfo) {
         GridInfo updated = gridService.update(gridInfo);
         return Result.success(updated);
     }
 
     @ApiOperation("删除网格")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id, HttpServletRequest request) {
+    @PreAuthorize("hasRole('admin')")
+    public Result<Void> delete(@PathVariable Long id) {
         gridService.delete(id);
         return Result.success();
     }

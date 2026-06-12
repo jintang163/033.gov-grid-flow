@@ -1,6 +1,7 @@
 import NProgress from 'nprogress'
 import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
+import { useUserStore } from '@/store/modules/user'
 
 NProgress.configure({ showSpinner: false })
 
@@ -19,7 +20,7 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '首页', icon: 'HomeFilled' }
+        meta: { title: '首页', icon: 'HomeFilled', roles: ['admin', 'street_manager', 'grid_leader', 'worker', 'handler', 'supervisor'] }
       }
     ]
   },
@@ -31,7 +32,7 @@ const routes = [
         path: 'index',
         name: 'Event',
         component: () => import('@/views/event/index.vue'),
-        meta: { title: '事件管理', icon: 'Document' }
+        meta: { title: '事件管理', icon: 'Document', roles: ['admin', 'street_manager', 'grid_leader', 'worker', 'handler', 'supervisor'] }
       }
     ]
   },
@@ -43,7 +44,7 @@ const routes = [
         path: 'index',
         name: 'Grid',
         component: () => import('@/views/grid/index.vue'),
-        meta: { title: '网格管理', icon: 'Grid' }
+        meta: { title: '网格管理', icon: 'Grid', roles: ['admin', 'street_manager', 'grid_leader'] }
       }
     ]
   },
@@ -55,7 +56,7 @@ const routes = [
         path: 'index',
         name: 'User',
         component: () => import('@/views/user/index.vue'),
-        meta: { title: '用户管理', icon: 'User' }
+        meta: { title: '用户管理', icon: 'User', roles: ['admin', 'street_manager'] }
       }
     ]
   },
@@ -67,7 +68,7 @@ const routes = [
         path: 'index',
         name: 'Statistics',
         component: () => import('@/views/statistics/index.vue'),
-        meta: { title: '统计分析', icon: 'DataAnalysis' }
+        meta: { title: '统计分析', icon: 'DataAnalysis', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
       }
     ]
   }
@@ -80,7 +81,14 @@ const router = createRouter({
 
 const whiteList = ['/login']
 
-router.beforeEach((to, from, next) => {
+function hasPermission(roles, route) {
+  if (route.meta && route.meta.roles) {
+    return roles.some(role => route.meta.roles.includes(role))
+  }
+  return true
+}
+
+router.beforeEach(async (to, from, next) => {
   NProgress.start()
   const hasToken = getToken()
   if (hasToken) {
@@ -88,7 +96,36 @@ router.beforeEach((to, from, next) => {
       next({ path: '/' })
       NProgress.done()
     } else {
-      next()
+      const userStore = useUserStore()
+      if (!userStore.role) {
+        try {
+          await userStore.getUserInfoAction()
+        } catch (e) {
+          userStore.resetState()
+          const tokenKey = (await import('@/utils/auth')).getTokenKey ? '' : 'token'
+          ;(await import('@/utils/auth')).removeToken()
+          next(`/login?redirect=${to.path}`)
+          NProgress.done()
+          return
+        }
+      }
+      const currentRole = userStore.role
+      if (!currentRole) {
+        next()
+        return
+      }
+      const roles = [currentRole]
+      const targetRoute = to.matched.length > 0 ? to.matched[to.matched.length - 1] : null
+      if (targetRoute && targetRoute.meta && targetRoute.meta.roles) {
+        if (hasPermission(roles, targetRoute)) {
+          next()
+        } else {
+          next({ path: '/dashboard' })
+          NProgress.done()
+        }
+      } else {
+        next()
+      }
     }
   } else {
     if (whiteList.indexOf(to.path) !== -1) {

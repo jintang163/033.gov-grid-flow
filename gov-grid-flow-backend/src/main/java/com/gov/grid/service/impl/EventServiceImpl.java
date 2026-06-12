@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -118,7 +119,12 @@ public class EventServiceImpl implements EventService {
             wrapper.eq(EventInfo::getEventType, dto.getEventType());
         }
         if (dto.getGridId() != null) {
-            wrapper.eq(EventInfo::getGridId, dto.getGridId());
+            List<Long> allowed = DataScopeUtils.intersectAccessibleGridIds(Collections.singletonList(dto.getGridId()));
+            if (allowed.isEmpty()) {
+                wrapper.eq(EventInfo::getId, -1);
+            } else {
+                wrapper.eq(EventInfo::getGridId, dto.getGridId());
+            }
         } else {
             List<Long> accessibleGridIds = DataScopeUtils.getAccessibleGridIds();
             if (CollUtil.isNotEmpty(accessibleGridIds)) {
@@ -148,6 +154,10 @@ public class EventServiceImpl implements EventService {
         EventInfo eventInfo = eventInfoMapper.selectById(eventId);
         if (eventInfo == null) {
             throw new BusinessException("事件不存在");
+        }
+
+        if (!DataScopeUtils.canAccessGrid(eventInfo.getGridId())) {
+            throw new BusinessException("无权访问该事件");
         }
 
         LambdaQueryWrapper<EventProcess> processWrapper = new LambdaQueryWrapper<>();

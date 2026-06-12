@@ -14,6 +14,7 @@ import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
 import com.gov.grid.mapper.SysUserMapper;
+import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
 import com.gov.grid.workflow.WorkflowService;
@@ -48,6 +49,10 @@ public class EventProcessServiceImpl implements EventProcessService {
         EventInfo eventInfo = eventInfoMapper.selectById(dto.getEventId());
         if (eventInfo == null) {
             throw new BusinessException("事件不存在");
+        }
+
+        if (!DataScopeUtils.canAccessGrid(eventInfo.getGridId())) {
+            throw new BusinessException("无权操作该事件");
         }
 
         SysUser user = sysUserMapper.selectById(userId);
@@ -120,6 +125,10 @@ public class EventProcessServiceImpl implements EventProcessService {
         EventInfo eventInfo = eventInfoMapper.selectById(eventId);
         if (eventInfo == null) {
             throw new BusinessException("事件不存在");
+        }
+
+        if (!DataScopeUtils.canAccessGrid(eventInfo.getGridId())) {
+            throw new BusinessException("无权操作该事件");
         }
 
         SysUser assignee = sysUserMapper.selectById(Long.parseLong(assigneeId));

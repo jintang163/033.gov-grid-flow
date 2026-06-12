@@ -14,6 +14,7 @@ import com.gov.grid.vo.EventDetailVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -130,6 +131,7 @@ public class EventController {
 
     @ApiOperation("审核通过")
     @PostMapping("/approve")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
     public Result<Void> approve(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.APPROVE.getCode());
@@ -139,6 +141,7 @@ public class EventController {
 
     @ApiOperation("核查通过")
     @PostMapping("/verify")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('supervisor')")
     public Result<Void> verify(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.VERIFY.getCode());
@@ -148,6 +151,7 @@ public class EventController {
 
     @ApiOperation("处置完成")
     @PostMapping("/process")
+    @PreAuthorize("hasRole('admin') or hasRole('handler')")
     public Result<Void> process(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.HANDLE.getCode());
@@ -157,6 +161,7 @@ public class EventController {
 
     @ApiOperation("退回")
     @PostMapping("/return")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
     public Result<Void> returnTask(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.REJECT.getCode());
@@ -166,6 +171,7 @@ public class EventController {
 
     @ApiOperation("分派")
     @PostMapping("/assign")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
     public Result<Void> assignTask(@RequestBody Map<String, Object> params, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         Long eventId = Long.valueOf(params.get("eventId").toString());

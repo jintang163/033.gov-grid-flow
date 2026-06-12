@@ -79,7 +79,17 @@ const isCollapse = computed(() => !appStore.sidebar.opened)
 const activeMenu = computed(() => route.path)
 
 const menuRoutes = computed(() => {
-  return router.options.routes.filter(r => r.children && r.children.length > 0 && r.path !== '/login')
+  const currentRole = userStore.role
+  if (!currentRole) return []
+  const roles = [currentRole]
+  return router.options.routes.filter(r => {
+    if (!r.children || r.children.length === 0 || r.path === '/login') return false
+    const child = r.children[0]
+    if (child.meta && child.meta.roles) {
+      return roles.some(role => child.meta.roles.includes(role))
+    }
+    return true
+  })
 })
 
 const breadcrumbs = computed(() => {

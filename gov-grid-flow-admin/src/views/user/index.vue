@@ -180,6 +180,16 @@
         <p>说明：角色默认为网格员，密码默认为123456</p>
         <p>导入的用户将自动分配到当前选中的网格</p>
       </el-alert>
+      <el-form-item label="目标网格" required style="margin-bottom: 16px">
+        <el-tree-select
+          v-model="importGridId"
+          :data="gridTreeOptions"
+          :props="{ label: 'gridName', value: 'id', children: 'children' }"
+          placeholder="请选择导入的目标网格"
+          check-strictly
+          style="width: 100%"
+        />
+      </el-form-item>
       <el-upload
         ref="uploadRef"
         :auto-upload="false"
@@ -245,6 +255,7 @@ const currentGrid = ref(null)
 const importResult = ref(null)
 const selectedRole = ref('')
 const selectedGridId = ref(null)
+const importGridId = ref(null)
 const roleOptions = ref([])
 const gridTreeOptions = ref([])
 
@@ -486,20 +497,26 @@ async function handleResetPwd(row) {
 
 function handleImport() {
   importResult.value = null
+  importGridId.value = currentGrid.value?.id || null
   if (uploadRef.value) {
     uploadRef.value.clearFiles()
   }
+  loadGridTreeOptions()
   importDialogVisible.value = true
 }
 
 async function handleImportSubmit() {
+  if (!importGridId.value) {
+    ElMessage.warning('请先选择导入的目标网格')
+    return
+  }
   if (!uploadRef.value?.files?.length) {
     ElMessage.warning('请先选择文件')
     return
   }
   const file = uploadRef.value.files[0].raw
   try {
-    const res = await importUsers(file, currentGrid.value?.id)
+    const res = await importUsers(file, importGridId.value)
     importResult.value = res.data
     ElMessage.success(`导入完成，成功${res.data.successCount}条，失败${res.data.failCount}条`)
     loadTableData()

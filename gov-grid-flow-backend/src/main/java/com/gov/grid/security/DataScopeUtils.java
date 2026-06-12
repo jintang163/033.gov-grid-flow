@@ -77,12 +77,24 @@ public class DataScopeUtils {
         return accessibleGridIds.contains(gridId);
     }
 
-    private static List<Long> getAllGridIds() {
-        List<GridInfo> allGrids = gridService.listAll();
-        return allGrids.stream().map(GridInfo::getId).collect(Collectors.toList());
+    public static List<Long> intersectAccessibleGridIds(List<Long> requestedGridIds) {
+        if (requestedGridIds == null || requestedGridIds.isEmpty()) {
+            return getAccessibleGridIds();
+        }
+        List<Long> accessibleGridIds = getAccessibleGridIds();
+        if (accessibleGridIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> result = new ArrayList<>();
+        for (Long gridId : requestedGridIds) {
+            if (accessibleGridIds.contains(gridId)) {
+                result.add(gridId);
+            }
+        }
+        return result;
     }
 
-    private static List<Long> getSubGridIds(Long rootGridId) {
+    public static List<Long> getSubGridIds(Long rootGridId) {
         if (rootGridId == null) {
             return Collections.emptyList();
         }
@@ -100,6 +112,11 @@ public class DataScopeUtils {
                 collectChildGridIds(child.getId(), result);
             }
         }
+    }
+
+    private static List<Long> getAllGridIds() {
+        List<GridInfo> allGrids = gridService.listAll();
+        return allGrids.stream().map(GridInfo::getId).collect(Collectors.toList());
     }
 
     public static String getCurrentUserRole() {

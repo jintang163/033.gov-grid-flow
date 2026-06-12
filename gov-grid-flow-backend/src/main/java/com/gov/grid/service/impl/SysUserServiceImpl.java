@@ -8,11 +8,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.exception.BusinessException;
+import com.gov.grid.entity.GridInfo;
 import com.gov.grid.entity.GridMember;
 import com.gov.grid.entity.SysUser;
 import com.gov.grid.enums.RoleEnum;
 import com.gov.grid.mapper.GridMemberMapper;
 import com.gov.grid.mapper.SysUserMapper;
+import com.gov.grid.security.DataScopeUtils;
+import com.gov.grid.service.GridService;
 import com.gov.grid.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final SysUserMapper sysUserMapper;
     private final GridMemberMapper gridMemberMapper;
     private final PasswordEncoder passwordEncoder;
+    private final GridService gridService;
 
     @Override
     public SysUser getByUsername(String username) {
@@ -80,7 +84,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             wrapper.eq(SysUser::getRole, role);
         }
         if (gridId != null) {
-            wrapper.eq(SysUser::getGridId, gridId);
+            List<Long> subGridIds = DataScopeUtils.getSubGridIds(gridId);
+            wrapper.in(SysUser::getGridId, subGridIds);
         }
 
         wrapper.orderByDesc(SysUser::getCreatedAt);
@@ -211,6 +216,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> importUsers(MultipartFile file, Long gridId) {
+        if (gridId == null) {
+            throw new BusinessException("导入用户时必须选择目标网格");
+        }
+
         Map<String, Object> result = new HashMap<>();
         List<Map<String, String>> successList = new ArrayList<>();
         List<Map<String, String>> failList = new ArrayList<>();
@@ -259,9 +268,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     user.setStatus(1);
                     sysUserMapper.insert(user);
 
-                    if (gridId != null) {
-                        addGridMember(user.getId(), gridId, user.getRole());
-                    }
+                    addGridMember(user.getId(), gridId, user.getRole());
 
                     rowData.put("username", username);
                     rowData.put("realName", realName);

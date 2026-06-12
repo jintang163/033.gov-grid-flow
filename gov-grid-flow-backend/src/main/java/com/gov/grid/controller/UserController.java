@@ -7,6 +7,7 @@ import com.gov.grid.service.SysUserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,7 @@ public class UserController {
 
     @ApiOperation("新增用户")
     @PostMapping
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
     public Result<SysUser> create(@RequestBody SysUser user) {
         SysUser created = sysUserService.createUser(user);
         return Result.success(created);
@@ -49,6 +51,7 @@ public class UserController {
 
     @ApiOperation("修改用户")
     @PutMapping
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
     public Result<SysUser> update(@RequestBody SysUser user) {
         SysUser updated = sysUserService.updateUser(user);
         return Result.success(updated);
@@ -56,6 +59,7 @@ public class UserController {
 
     @ApiOperation("删除用户")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
     public Result<Void> delete(@PathVariable Long id) {
         sysUserService.deleteUser(id);
         return Result.success();
@@ -63,6 +67,7 @@ public class UserController {
 
     @ApiOperation("分配角色")
     @PutMapping("/{id}/role")
+    @PreAuthorize("hasRole('admin')")
     public Result<Void> updateRole(@PathVariable Long id, @RequestParam String role) {
         sysUserService.updateUserRole(id, role);
         return Result.success();
@@ -70,6 +75,7 @@ public class UserController {
 
     @ApiOperation("分配网格")
     @PutMapping("/{id}/grid")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
     public Result<Void> updateGrid(@PathVariable Long id, @RequestParam Long gridId) {
         sysUserService.updateUserGrid(id, gridId);
         return Result.success();
@@ -77,6 +83,7 @@ public class UserController {
 
     @ApiOperation("重置密码")
     @PutMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('admin')")
     public Result<Void> resetPassword(@PathVariable Long id, @RequestParam String password) {
         sysUserService.resetPassword(id, password);
         return Result.success();
@@ -84,6 +91,7 @@ public class UserController {
 
     @ApiOperation("批量导入用户")
     @PostMapping("/import")
+    @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
     public Result<Map<String, Object>> importUsers(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Long gridId) {
