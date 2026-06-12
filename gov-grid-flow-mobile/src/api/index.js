@@ -248,3 +248,20 @@ export const transcribeVoice = (file) => {
     }
   })
 }
+
+// AI图像比对
+export const compareImages = (data) => {
+  return request({
+    url: '/cv/compare',
+    method: 'post',
+    data
+  })
+}
+
+// 获取事件比对历史
+export const getComparisonHistory = (eventId) => {
+  return request({
+    url: `/cv/event/${eventId}`,
+    method: 'get'
+  })
+}

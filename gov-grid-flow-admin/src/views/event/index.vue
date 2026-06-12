@@ -172,6 +172,95 @@
       </div>
       <el-empty v-else description="暂无媒体资料" />
 
+      <el-divider content-position="left" v-if="comparisonList && comparisonList.length > 0">AI图像比对结果</el-divider>
+      <div v-if="comparisonList && comparisonList.length > 0" class="comparison-list">
+        <el-card
+          v-for="(item, index) in comparisonList"
+          :key="item.id || index"
+          shadow="never"
+          class="comparison-card"
+        >
+          <div class="comparison-header">
+            <div class="comparison-title">
+              <el-icon color="#1989fa"><MagicStick /></el-icon>
+              <span>比对记录 {{ index + 1 }}</span>
+            </div>
+            <el-tag
+              :type="item.judgment === 'PASS' ? 'success' : 'danger'"
+              size="large"
+              effect="dark"
+            >
+              {{ item.judgmentText || (item.judgment === 'PASS' ? '合格' : item.judgment === 'FAIL' ? '不合格' : '待判定') }}
+            </el-tag>
+          </div>
+
+          <div class="similarity-section">
+            <div class="similarity-label">图像相似度</div>
+            <div class="similarity-bar-wrap">
+              <div
+                class="similarity-bar"
+                :style="{ width: item.similarity + '%' }"
+                :class="item.judgment === 'PASS' ? 'pass' : 'fail'"
+              ></div>
+            </div>
+            <div class="similarity-value" :class="item.judgment === 'PASS' ? 'pass-text' : 'fail-text'">
+              {{ item.similarity }}%
+            </div>
+          </div>
+
+          <div class="comparison-images">
+            <div class="comp-img-item">
+              <div class="comp-img-label">处置前</div>
+              <el-image
+                :src="item.beforeImage"
+                :preview-src-list="[item.beforeImage, item.afterImage]"
+                :initial-index="0"
+                fit="cover"
+                style="width: 100%; height: 120px; border-radius: 4px"
+                preview-teleported
+              />
+            </div>
+            <div class="comp-vs-icon">
+              <el-icon><ArrowRight /></el-icon>
+            </div>
+            <div class="comp-img-item">
+              <div class="comp-img-label">处置后</div>
+              <el-image
+                :src="item.afterImage"
+                :preview-src-list="[item.beforeImage, item.afterImage]"
+                :initial-index="1"
+                fit="cover"
+                style="width: 100%; height: 120px; border-radius: 4px"
+                preview-teleported
+              />
+            </div>
+          </div>
+
+          <div v-if="item.heatmapImage" class="heatmap-section">
+            <div class="heatmap-label">
+              <el-icon><View /></el-icon>
+              <span>差异热力图</span>
+            </div>
+            <el-image
+              :src="item.heatmapImage"
+              :preview-src-list="[item.heatmapImage]"
+              fit="cover"
+              style="width: 100%; height: 180px; border-radius: 4px; margin-top: 6px"
+              preview-teleported
+            />
+          </div>
+
+          <div v-if="item.judgmentReason" class="judgment-reason">
+            <div class="reason-label">AI判定说明</div>
+            <div class="reason-text">{{ item.judgmentReason }}</div>
+          </div>
+
+          <div class="comparison-time">
+            比对时间：{{ item.createdAt }}
+          </div>
+        </el-card>
+      </div>
+
       <el-divider content-position="left" v-if="eventDetail && (eventDetail.longitude || eventDetail.lng)">周边资源调度（500米）</el-divider>
       <el-row :gutter="12" v-loading="nearbyData.loading" v-if="eventDetail && (eventDetail.longitude || eventDetail.lng)" style="margin-bottom: 16px">
         <el-col :span="8">
@@ -446,7 +535,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, watch, nextTick } from 'vue'
+import { reactive, ref, onMounted, watch, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -465,7 +554,10 @@ import {
   Close,
   Phone,
   VideoCamera,
-  User
+  User,
+  MagicStick,
+  View,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -506,6 +598,13 @@ const pagination = reactive({
 
 const detailDialogVisible = ref(false)
 const eventDetail = ref(null)
+
+const comparisonList = computed(() => {
+  if (eventDetail.value?.comparisonList && Array.isArray(eventDetail.value.comparisonList)) {
+    return eventDetail.value.comparisonList
+  }
+  return []
+})
 
 const processDialogVisible = ref(false)
 const processFormRef = ref(null)
@@ -1277,6 +1376,145 @@ onMounted(() => {
         &:hover {
           text-decoration: underline;
         }
+      }
+    }
+  }
+
+  .comparison-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .comparison-card {
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+
+      .comparison-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+
+        .comparison-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 600;
+          color: #303133;
+        }
+      }
+
+      .similarity-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+
+        .similarity-label {
+          font-size: 14px;
+          color: #606266;
+          white-space: nowrap;
+        }
+
+        .similarity-bar-wrap {
+          flex: 1;
+          height: 10px;
+          background: #f0f2f5;
+          border-radius: 5px;
+          overflow: hidden;
+
+          .similarity-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+
+            &.pass {
+              background: linear-gradient(90deg, #67c23a, #85ce61);
+            }
+
+            &.fail {
+              background: linear-gradient(90deg, #f56c6c, #f78989);
+            }
+          }
+        }
+
+        .similarity-value {
+          font-size: 18px;
+          font-weight: bold;
+          min-width: 70px;
+          text-align: right;
+
+          &.pass-text {
+            color: #67c23a;
+          }
+
+          &.fail-text {
+            color: #f56c6c;
+          }
+        }
+      }
+
+      .comparison-images {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+
+        .comp-img-item {
+          flex: 1;
+
+          .comp-img-label {
+            font-size: 12px;
+            color: #909399;
+            margin-bottom: 6px;
+            text-align: center;
+          }
+        }
+
+        .comp-vs-icon {
+          color: #c0c4cc;
+          font-size: 24px;
+        }
+      }
+
+      .heatmap-section {
+        margin-bottom: 12px;
+
+        .heatmap-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          color: #606266;
+          margin-bottom: 6px;
+        }
+      }
+
+      .judgment-reason {
+        background: #f5f7fa;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 8px;
+
+        .reason-label {
+          font-size: 13px;
+          color: #606266;
+          margin-bottom: 6px;
+          font-weight: 500;
+        }
+
+        .reason-text {
+          font-size: 14px;
+          color: #303133;
+          line-height: 1.6;
+        }
+      }
+
+      .comparison-time {
+        font-size: 12px;
+        color: #c0c4cc;
+        text-align: right;
       }
     }
   }

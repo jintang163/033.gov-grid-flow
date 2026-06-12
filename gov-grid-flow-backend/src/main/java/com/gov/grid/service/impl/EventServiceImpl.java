@@ -20,6 +20,7 @@ import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventService;
+import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class EventServiceImpl implements EventService {
     private final EventEvaluationMapper eventEvaluationMapper;
     private final WorkflowService workflowService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ImageComparisonService imageComparisonService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -174,6 +176,7 @@ public class EventServiceImpl implements EventService {
         vo.setEventInfo(eventInfo);
         vo.setProcessList(processList);
         vo.setEvaluation(evaluation);
+        vo.setComparisonList(imageComparisonService.getComparisonHistory(eventId));
         return vo;
     }
 

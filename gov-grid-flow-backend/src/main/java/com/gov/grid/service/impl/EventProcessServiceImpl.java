@@ -17,6 +17,7 @@ import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
+import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.workflow.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class EventProcessServiceImpl implements EventProcessService {
     private final EventInfoMapper eventInfoMapper;
     private final EventProcessMapper eventProcessMapper;
     private final SysUserMapper sysUserMapper;
+    private final ImageComparisonService imageComparisonService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -94,6 +96,29 @@ public class EventProcessServiceImpl implements EventProcessService {
         }
 
         eventProcessMapper.insert(process);
+        Long processId = process.getId();
+
+        if (ProcessAction.HANDLE.getCode().equals(action)
+                && CollUtil.isNotEmpty(dto.getAfterImages())
+                && StrUtil.isNotBlank(eventInfo.getImages())) {
+            String[] beforeImages = eventInfo.getImages().split(",");
+            if (beforeImages.length > 0) {
+                String beforeImage = beforeImages[0];
+                for (String afterImage : dto.getAfterImages()) {
+                    try {
+                        com.gov.grid.dto.ImageComparisonDTO compareDTO = new com.gov.grid.dto.ImageComparisonDTO();
+                        compareDTO.setEventId(dto.getEventId());
+                        compareDTO.setProcessId(processId);
+                        compareDTO.setBeforeImage(beforeImage.trim());
+                        compareDTO.setAfterImage(afterImage.trim());
+                        imageComparisonService.compareAndSave(compareDTO, userId);
+                        log.info("自动图像比对完成，事件ID：{}，处置记录ID：{}", dto.getEventId(), processId);
+                    } catch (Exception e) {
+                        log.error("自动图像比对失败，事件ID：{}，处置记录ID：{}", dto.getEventId(), processId, e);
+                    }
+                }
+            }
+        }
 
         Map<String, Object> variables = new HashMap<>();
         if (ProcessAction.REJECT.getCode().equals(action)) {

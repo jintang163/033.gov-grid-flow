@@ -84,6 +84,11 @@ asr:
   mock:
     enabled: true
 
+cv:
+  mock:
+    enabled: true
+  similarity-threshold: 60.0
+
 logging:
   level:
     root: info

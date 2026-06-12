@@ -187,6 +187,98 @@
         </van-cell-group>
       </div>
 
+      <!-- AI图像比对结果 -->
+      <div v-if="comparisonList && comparisonList.length > 0" class="section">
+        <div class="section-title">
+          <van-icon name="magic" size="14" color="#1989fa" />
+          <span>AI图像比对结果</span>
+        </div>
+        <van-cell-group inset>
+          <div
+            v-for="(item, idx) in comparisonList"
+            :key="item.id || idx"
+            class="comparison-card"
+          >
+            <div class="comparison-header">
+              <div class="comparison-index">比对记录 {{ idx + 1 }}</div>
+              <van-tag
+                :type="item.judgment === 'PASS' ? 'success' : 'danger'"
+                size="medium"
+                round
+              >
+                {{ item.judgmentText || (item.judgment === 'PASS' ? '合格' : item.judgment === 'FAIL' ? '不合格' : '待判定') }}
+              </van-tag>
+            </div>
+
+            <div class="similarity-wrap">
+              <div class="similarity-label">图像相似度</div>
+              <div class="similarity-bar-wrap">
+                <div
+                  class="similarity-bar"
+                  :style="{ width: item.similarity + '%' }"
+                  :class="item.judgment === 'PASS' ? 'pass' : 'fail'"
+                ></div>
+              </div>
+              <div class="similarity-value" :class="item.judgment === 'PASS' ? 'pass-text' : 'fail-text'">
+                {{ item.similarity }}%
+              </div>
+            </div>
+
+            <div class="comparison-images">
+              <div class="image-item">
+                <div class="image-label">处置前</div>
+                <van-image
+                  :src="getFullFileUrl(item.beforeImage)"
+                  width="100%"
+                  height="100"
+                  fit="cover"
+                  radius="4"
+                  @click="previewImageByUrl(getFullFileUrl(item.beforeImage))"
+                />
+              </div>
+              <div class="vs-icon">
+                <van-icon name="arrow" size="20" />
+              </div>
+              <div class="image-item">
+                <div class="image-label">处置后</div>
+                <van-image
+                  :src="getFullFileUrl(item.afterImage)"
+                  width="100%"
+                  height="100"
+                  fit="cover"
+                  radius="4"
+                  @click="previewImageByUrl(getFullFileUrl(item.afterImage))"
+                />
+              </div>
+            </div>
+
+            <div v-if="item.heatmapImage" class="heatmap-wrap">
+              <div class="heatmap-label">
+                <van-icon name="eye-o" size="12" />
+                <span>差异热力图</span>
+              </div>
+              <van-image
+                :src="item.heatmapImage"
+                width="100%"
+                height="150"
+                fit="cover"
+                radius="4"
+                @click="previewImageByUrl(item.heatmapImage)"
+              />
+            </div>
+
+            <div v-if="item.judgmentReason" class="judgment-reason">
+              <div class="reason-label">AI判定说明</div>
+              <div class="reason-text">{{ item.judgmentReason }}</div>
+            </div>
+
+            <div v-if="item.createdAt" class="comparison-time">
+              比对时间：{{ item.createdAt }}
+            </div>
+          </div>
+        </van-cell-group>
+      </div>
+
       <!-- 周边资源调度 -->
       <van-cell-group v-if="detail.lng" inset title="周边资源调度（500米）" style="margin-top:12px">
         <van-cell title="周边摄像头" :label="`${nearbyData.cameraCount}个`">
@@ -329,6 +421,134 @@
       </div>
     </van-popup>
 
+    <!-- 处置完成弹窗 -->
+    <van-popup v-model:show="showProcess" round position="bottom" :style="{ height: '80%' }">
+      <div class="popup-header">
+        <div class="popup-title">处置完成</div>
+        <van-icon name="cross" size="22" @click="showProcess = false" />
+      </div>
+      <div class="process-content">
+        <van-cell-group inset>
+          <van-field
+            v-model="processForm.comment"
+            label="处置意见"
+            type="textarea"
+            rows="3"
+            autosize
+            maxlength="500"
+            placeholder="请输入处置意见（选填）"
+            show-word-limit
+          />
+        </van-cell-group>
+
+        <div class="process-section">
+          <div class="section-label">
+            <span>处置后照片</span>
+            <span class="label-hint">上传后将自动进行AI比对</span>
+          </div>
+          <van-uploader
+            v-model="afterImageFiles"
+            :max-count="9"
+            :max-size="10 * 1024 * 1024"
+            multiple
+            :deletable="true"
+            :before-read="beforeProcessImageRead"
+            :after-read="afterProcessImageRead"
+            @delete="onProcessImageDelete"
+            accept="image/*"
+          />
+          <div class="upload-hint">支持 jpg、png 格式，单张不超过10MB</div>
+        </div>
+
+        <!-- AI比对结果 -->
+        <div v-if="processComparisonResult" class="comparison-result-wrap">
+          <div class="result-header">
+            <div class="result-title">
+              <van-icon name="magic" size="16" color="#1989fa" />
+              <span>AI图像比对结果</span>
+            </div>
+            <van-tag
+              :type="processComparisonResult.judgment === 'PASS' ? 'success' : 'danger'"
+              size="medium"
+              round
+            >
+              {{ processComparisonResult.judgmentText || (processComparisonResult.judgment === 'PASS' ? '合格' : '不合格') }}
+            </van-tag>
+          </div>
+
+          <div class="similarity-wrap">
+            <div class="similarity-label">图像相似度</div>
+            <div class="similarity-bar-wrap">
+              <div
+                class="similarity-bar"
+                :style="{ width: processComparisonResult.similarity + '%' }"
+                :class="processComparisonResult.judgment === 'PASS' ? 'pass' : 'fail'"
+              ></div>
+            </div>
+            <div class="similarity-value" :class="processComparisonResult.judgment === 'PASS' ? 'pass-text' : 'fail-text'">
+              {{ processComparisonResult.similarity }}%
+            </div>
+          </div>
+
+          <div class="comparison-images">
+            <div class="image-item">
+              <div class="image-label">处置前</div>
+              <van-image
+                :src="processComparisonResult.beforeImage ? getFullFileUrl(processComparisonResult.beforeImage) : ''"
+                width="100%"
+                height="80"
+                fit="cover"
+                radius="4"
+              />
+            </div>
+            <div class="vs-icon">
+              <van-icon name="arrow" size="18" />
+            </div>
+            <div class="image-item">
+              <div class="image-label">处置后</div>
+              <van-image
+                :src="processComparisonResult.afterImage ? getFullFileUrl(processComparisonResult.afterImage) : ''"
+                width="100%"
+                height="80"
+                fit="cover"
+                radius="4"
+              />
+            </div>
+          </div>
+
+          <div v-if="processComparisonResult.heatmapImage" class="heatmap-wrap">
+            <div class="heatmap-label">
+              <van-icon name="eye-o" size="12" />
+              <span>差异热力图</span>
+            </div>
+            <van-image
+              :src="processComparisonResult.heatmapImage"
+              width="100%"
+              height="120"
+              fit="cover"
+              radius="4"
+            />
+          </div>
+
+          <div v-if="processComparisonResult.judgmentReason" class="judgment-reason">
+            <div class="reason-label">AI判定说明</div>
+            <div class="reason-text">{{ processComparisonResult.judgmentReason }}</div>
+          </div>
+        </div>
+
+        <div v-if="comparing" class="comparing-hint">
+          <van-loading size="20px" color="#1989fa" />
+          <span>AI比对中，请稍候...</span>
+        </div>
+      </div>
+
+      <div class="process-actions">
+        <van-button block round type="success" size="large" :loading="processLoading" @click="submitProcessForm">
+          确认处置完成
+        </van-button>
+      </div>
+    </van-popup>
+
     <van-popup v-model:show="showEvaluate" round position="bottom" :style="{ height: 'auto' }">
       <div class="popup-header">
         <div class="popup-title">事件评价</div>
@@ -450,10 +670,12 @@ import {
   submitEvaluation as apiSubmitEvaluation,
   getMemberList,
   getNearbyResources,
-  callMember
+  callMember,
+  uploadFile,
+  compareImages
 } from '@/api'
 import { useUserStore } from '@/store'
-import { getFullFileUrl } from '@/utils/fileUrl'
+import { getFullFileUrl, getBaseURL } from '@/utils/fileUrl'
 
 const route = useRoute()
 const router = useRouter()
@@ -486,6 +708,16 @@ const evaluation = ref({
 const returnForm = ref({
   reason: ''
 })
+
+const showProcess = ref(false)
+const processLoading = ref(false)
+const comparing = ref(false)
+const processForm = reactive({
+  comment: ''
+})
+const afterImageFiles = ref([])
+const uploadedAfterImages = ref([])
+const processComparisonResult = ref(null)
 
 const rejectForm = ref({
   reason: ''
@@ -788,6 +1020,13 @@ const previewImage = (index) => {
   previewVisible.value = true
 }
 
+const previewImageByUrl = (url) => {
+  showImagePreview({
+    images: [url],
+    startPosition: 0
+  })
+}
+
 const previewAttachment = (attachments, index) => {
   const images = attachments.filter(a => isImageFile(a))
   if (images.length > 0) {
@@ -868,20 +1107,100 @@ const handleApprove = async () => {
   }
 }
 
-const handleProcess = async () => {
+const handleProcess = () => {
+  processForm.comment = ''
+  afterImageFiles.value = []
+  uploadedAfterImages.value = []
+  processComparisonResult.value = null
+  showProcess.value = true
+}
+
+const beforeProcessImageRead = (file) => {
+  if (file.type && !file.type.startsWith('image/')) {
+    showToast('请选择图片文件')
+    return false
+  }
+  if (file.file && file.file.size > 10 * 1024 * 1024) {
+    showToast('图片大小不能超过10MB')
+    return false
+  }
+  return true
+}
+
+const afterProcessImageRead = async (file) => {
+  const files = Array.isArray(file) ? file : [file]
+  for (const f of files) {
+    try {
+      f.status = 'uploading'
+      f.message = '上传中...'
+      const res = await uploadFile([f.file])
+      const urls = res.data || []
+      if (urls.length > 0) {
+        uploadedAfterImages.value.push(urls[0])
+        f.status = 'done'
+        f.message = ''
+        if (uploadedAfterImages.value.length === 1 && imageList.value.length > 0) {
+          triggerComparison(urls[0])
+        }
+      } else {
+        f.status = 'failed'
+        f.message = '上传失败'
+      }
+    } catch (e) {
+      f.status = 'failed'
+      f.message = '上传失败'
+    }
+  }
+}
+
+const onProcessImageDelete = (file, detail) => {
+  uploadedAfterImages.value.splice(detail.index, 1)
+  processComparisonResult.value = null
+}
+
+const triggerComparison = async (afterImageUrl) => {
+  if (!imageList.value || imageList.value.length === 0) {
+    return
+  }
+  const beforeImageUrl = imageList.value[0]
+  comparing.value = true
   try {
-    await showConfirmDialog({
-      title: '确认处置完成',
-      message: '确认该事件已处置完成？'
-    })
-    const res = await processEvent({
+    const res = await compareImages({
       eventId: detail.value.id,
-      completed: true
+      beforeImage: beforeImageUrl.replace(getBaseURL(), ''),
+      afterImage: afterImageUrl.replace(getBaseURL(), '')
     })
+    if (res.data) {
+      processComparisonResult.value = res.data
+    }
+  } catch (e) {
+    console.error('AI比对失败', e)
+    showToast('AI比对失败，可继续提交处置')
+  } finally {
+    comparing.value = false
+  }
+}
+
+const submitProcessForm = async () => {
+  processLoading.value = true
+  try {
+    const submitData = {
+      eventId: detail.value.id,
+      action: 'HANDLE',
+      comment: processForm.comment,
+      afterImages: uploadedAfterImages.value,
+      attachments: uploadedAfterImages.value
+    }
+    await processEvent(submitData)
     showToast({ type: 'success', message: '处置完成' })
+    showProcess.value = false
     await fetchDetail()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      showToast(e.message || '处置失败，请重试')
+    }
+  } finally {
+    processLoading.value = false
   }
 }
 
@@ -1199,6 +1518,139 @@ onMounted(() => {
   }
 }
 
+.comparison-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .comparison-index {
+      font-size: 14px;
+      font-weight: 600;
+      color: #323233;
+    }
+  }
+
+  .similarity-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    .similarity-label {
+      font-size: 13px;
+      color: #646566;
+      white-space: nowrap;
+    }
+
+    .similarity-bar-wrap {
+      flex: 1;
+      height: 8px;
+      background: #f2f3f5;
+      border-radius: 4px;
+      overflow: hidden;
+
+      .similarity-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+
+        &.pass {
+          background: linear-gradient(90deg, #07c160, #00b060);
+        }
+
+        &.fail {
+          background: linear-gradient(90deg, #ee0a24, #ff6034);
+        }
+      }
+    }
+
+    .similarity-value {
+      font-size: 14px;
+      font-weight: bold;
+      min-width: 50px;
+      text-align: right;
+
+      &.pass-text {
+        color: #07c160;
+      }
+
+      &.fail-text {
+        color: #ee0a24;
+      }
+    }
+  }
+
+  .comparison-images {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    .image-item {
+      flex: 1;
+
+      .image-label {
+        font-size: 12px;
+        color: #969799;
+        margin-bottom: 4px;
+        text-align: center;
+      }
+    }
+
+    .vs-icon {
+      color: #c8c9cc;
+      font-size: 20px;
+    }
+  }
+
+  .heatmap-wrap {
+    margin-bottom: 12px;
+
+    .heatmap-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #646566;
+      margin-bottom: 6px;
+    }
+  }
+
+  .judgment-reason {
+    background: #f7f8fa;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+
+    .reason-label {
+      font-size: 12px;
+      color: #646566;
+      margin-bottom: 4px;
+    }
+
+    .reason-text {
+      font-size: 13px;
+      color: #323233;
+      line-height: 1.5;
+    }
+  }
+
+  .comparison-time {
+    font-size: 12px;
+    color: #c8c9cc;
+    text-align: right;
+  }
+}
+
 .timeline-wrap {
   padding: 8px 0;
 }
@@ -1399,6 +1851,77 @@ onMounted(() => {
 
 .evaluate-actions {
   padding: 20px 16px 0;
+}
+
+.process-content {
+  padding-bottom: 20px;
+  max-height: calc(80vh - 120px);
+  overflow-y: auto;
+}
+
+.process-section {
+  margin-top: 12px;
+  padding: 0 16px;
+
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #646566;
+    margin-bottom: 8px;
+    font-weight: 500;
+
+    .label-hint {
+      font-size: 12px;
+      color: #1989fa;
+      font-weight: normal;
+    }
+  }
+
+  .upload-hint {
+    font-size: 12px;
+    color: #969799;
+    margin-top: 4px;
+  }
+}
+
+.comparison-result-wrap {
+  margin: 12px 16px 0;
+  background: #f7f8fa;
+  border-radius: 8px;
+  padding: 12px;
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .result-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #323233;
+    }
+  }
+}
+
+.comparing-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  font-size: 14px;
+  color: #646566;
+}
+
+.process-actions {
+  padding: 12px 16px 20px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .return-content {

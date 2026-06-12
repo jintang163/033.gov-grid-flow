@@ -175,7 +175,27 @@ CREATE TABLE `event_evaluation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件评价表';
 
 -- ---------------------------------------------
--- 8. 通知表 sys_notification
+-- 8. 图像比对表 event_image_comparison
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_image_comparison`;
+CREATE TABLE `event_image_comparison` (
+  `id`                  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_id`            bigint(20)   NOT NULL COMMENT '事件ID',
+  `process_id`          bigint(20)   DEFAULT NULL COMMENT '关联处置记录ID',
+  `before_image`        varchar(255) NOT NULL COMMENT '处置前图片URL（上报图片）',
+  `after_image`         varchar(255) NOT NULL COMMENT '处置后图片URL',
+  `similarity`          decimal(5,2) NOT NULL COMMENT '相似度 0-100',
+  `heatmap_image`       varchar(255) DEFAULT NULL COMMENT '热力图URL',
+  `judgment`          varchar(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'AI判定：PASS-合格 FAIL-不合格 PENDING-待判定',
+  `judgment_reason`     varchar(500) DEFAULT NULL COMMENT 'AI判定理由',
+  `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_event_id` (`event_id`),
+  KEY `idx_process_id` (`process_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件图像比对表';
+
+-- ---------------------------------------------
+-- 9. 通知表 sys_notification
 -- ---------------------------------------------
 DROP TABLE IF EXISTS `sys_notification`;
 CREATE TABLE `sys_notification` (

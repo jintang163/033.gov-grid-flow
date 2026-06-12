@@ -21,5 +21,7 @@ public class EventProcessDTO {
 
     private List<String> attachments;
 
+    private List<String> afterImages;
+
     private Long assignee;
 }

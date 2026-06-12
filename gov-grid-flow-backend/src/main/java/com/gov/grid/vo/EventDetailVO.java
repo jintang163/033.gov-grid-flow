@@ -1,5 +1,6 @@
 package com.gov.grid.vo;
 
+import com.gov.grid.dto.ImageComparisonResultVO;
 import com.gov.grid.entity.EventEvaluation;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.entity.EventProcess;
@@ -15,4 +16,7 @@ public class EventDetailVO {
     private List<EventProcess> processList;
 
     private EventEvaluation evaluation;
+
+    private List<ImageComparisonResultVO> comparisonList;
 }
+
