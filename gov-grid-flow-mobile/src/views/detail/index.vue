@@ -453,6 +453,7 @@ import {
   callMember
 } from '@/api'
 import { useUserStore } from '@/store'
+import { getFullFileUrl } from '@/utils/fileUrl'
 
 const route = useRoute()
 const router = useRouter()
@@ -545,18 +546,29 @@ const priorityTagType = computed(() => {
 
 const imageList = computed(() => {
   if (!detail.value?.images) return []
-  if (Array.isArray(detail.value.images)) return detail.value.images
-  return String(detail.value.images).split(',').filter(Boolean)
+  let list = []
+  if (Array.isArray(detail.value.images)) {
+    list = detail.value.images
+  } else {
+    list = String(detail.value.images).split(',').filter(Boolean)
+  }
+  return list.map(url => getFullFileUrl(url))
 })
 
 const videoList = computed(() => {
   if (!detail.value?.videos) return []
-  if (Array.isArray(detail.value.videos)) return detail.value.videos
-  return String(detail.value.videos).split(',').filter(Boolean)
+  let list = []
+  if (Array.isArray(detail.value.videos)) {
+    list = detail.value.videos
+  } else {
+    list = String(detail.value.videos).split(',').filter(Boolean)
+  }
+  return list.map(url => getFullFileUrl(url))
 })
 
 const voiceUrl = computed(() => {
-  return detail.value?.voiceUrl || ''
+  const url = detail.value?.voiceUrl || ''
+  return getFullFileUrl(url)
 })
 
 const processList = computed(() => {
