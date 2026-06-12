@@ -21,4 +21,10 @@ public interface GridService {
     PageResult<GridInfo> page(Integer pageNum, Integer pageSize, String keyword);
 
     List<SysUser> getMembers(Long gridId);
+
+    List<GridInfo> getChildren(Long parentId);
+
+    List<GridInfo> getGridTree();
+
+    List<GridInfo> getGridTreeByLevel(Integer level);
 }

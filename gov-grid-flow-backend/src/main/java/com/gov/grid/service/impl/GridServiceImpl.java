@@ -129,4 +129,53 @@ public class GridServiceImpl implements GridService {
         List<Long> userIds = members.stream().map(GridMember::getUserId).collect(Collectors.toList());
         return sysUserMapper.selectBatchIds(userIds);
     }
+
+    @Override
+    public List<GridInfo> getChildren(Long parentId) {
+        LambdaQueryWrapper<GridInfo> wrapper = new LambdaQueryWrapper<>();
+        if (parentId == null) {
+            wrapper.isNull(GridInfo::getParentId);
+        } else {
+            wrapper.eq(GridInfo::getParentId, parentId);
+        }
+        wrapper.eq(GridInfo::getStatus, 1);
+        wrapper.orderByAsc(GridInfo::getSort);
+        return gridInfoMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<GridInfo> getGridTree() {
+        List<GridInfo> allGrids = listAll();
+        return buildTree(allGrids, null);
+    }
+
+    @Override
+    public List<GridInfo> getGridTreeByLevel(Integer level) {
+        List<GridInfo> allGrids = listAll();
+        List<GridInfo> rootNodes = allGrids.stream()
+                .filter(g -> g.getGridLevel() != null && g.getGridLevel() <= level)
+                .collect(Collectors.toList());
+        return buildTree(rootNodes, null);
+    }
+
+    private List<GridInfo> buildTree(List<GridInfo> allGrids, Long parentId) {
+        List<GridInfo> result = new ArrayList<>();
+        for (GridInfo grid : allGrids) {
+            boolean isRoot = (parentId == null && grid.getParentId() == null)
+                    || (parentId != null && parentId.equals(grid.getParentId()));
+            if (isRoot) {
+                List<GridInfo> children = buildTree(allGrids, grid.getId());
+                if (!children.isEmpty()) {
+                    grid.setChildren(children);
+                }
+                result.add(grid);
+            }
+        }
+        result.sort((g1, g2) -> {
+            Integer sort1 = g1.getSort() != null ? g1.getSort() : 0;
+            Integer sort2 = g2.getSort() != null ? g2.getSort() : 0;
+            return sort1.compareTo(sort2);
+        });
+        return result;
+    }
 }

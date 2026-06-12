@@ -8,6 +8,29 @@ export function getGridList(params) {
   })
 }
 
+export function getGridTree() {
+  return request({
+    url: '/grid/tree',
+    method: 'get'
+  })
+}
+
+export function getGridTreeByLevel(level) {
+  return request({
+    url: '/grid/tree/level',
+    method: 'get',
+    params: { level }
+  })
+}
+
+export function getGridChildren(parentId) {
+  return request({
+    url: '/grid/children',
+    method: 'get',
+    params: { parentId }
+  })
+}
+
 export function getGridDetail(id) {
   return request({
     url: `/grid/${id}`,
@@ -127,4 +150,13 @@ export function getGridMembers(gridId) {
     method: 'get',
     params: { gridId }
   })
+}
+
+export function getGridLevelOptions() {
+  return [
+    { value: 1, label: '街道' },
+    { value: 2, label: '社区' },
+    { value: 3, label: '网格' },
+    { value: 4, label: '微网格' }
+  ]
 }

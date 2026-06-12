@@ -38,7 +38,7 @@ CREATE TABLE `sys_user` (
   `email`       varchar(100) DEFAULT NULL COMMENT '邮箱',
   `avatar`      varchar(255) DEFAULT NULL COMMENT '头像URL',
   `status`      tinyint(4)   NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
-  `role`        varchar(30)  NOT NULL DEFAULT 'worker' COMMENT '角色：admin-管理员 grid_leader-网格长 worker-网格员 handler-处置员',
+  `role`        varchar(30)  NOT NULL DEFAULT 'worker' COMMENT '角色：admin-系统管理员 street_manager-街道管理员 grid_leader-网格长 worker-网格员 handler-处置员 supervisor-督查员',
   `dept_id`     bigint(20)   DEFAULT NULL COMMENT '部门ID',
   `grid_id`     bigint(20)   DEFAULT NULL COMMENT '所属网格ID',
   `openid`      varchar(100) DEFAULT NULL COMMENT '微信OpenID',
@@ -60,16 +60,23 @@ CREATE TABLE `grid_info` (
   `id`              bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `grid_code`       varchar(50)  NOT NULL COMMENT '网格编码',
   `grid_name`       varchar(100) NOT NULL COMMENT '网格名称',
+  `grid_level`      tinyint(4)   NOT NULL DEFAULT 3 COMMENT '网格层级：1-街道 2-社区 3-网格 4-微网格',
+  `parent_id`       bigint(20)   DEFAULT NULL COMMENT '父级网格ID',
   `grid_leader_id`  bigint(20)   DEFAULT NULL COMMENT '网格长用户ID',
   `area`            decimal(10,2) DEFAULT NULL COMMENT '面积(平方公里)',
   `boundary`        text         DEFAULT NULL COMMENT '边界坐标(GeoJSON)',
   `lng`             decimal(10,6) DEFAULT NULL COMMENT '中心经度',
   `lat`             decimal(10,6) DEFAULT NULL COMMENT '中心纬度',
   `address`         varchar(255) DEFAULT NULL COMMENT '地址',
+  `sort`            int(11)      NOT NULL DEFAULT 0 COMMENT '排序',
   `status`          tinyint(4)   NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
   `created_at`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         tinyint(4)   NOT NULL DEFAULT 0 COMMENT '逻辑删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_grid_code` (`grid_code`),
+  KEY `idx_parent_id` (`parent_id`),
+  KEY `idx_grid_level` (`grid_level`),
   KEY `idx_grid_leader_id` (`grid_leader_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='网格表';
 
@@ -199,58 +206,94 @@ INSERT INTO `sys_dept` (`id`, `name`, `code`, `parent_id`, `leader`, `phone`, `s
 (3, '事件处置中心', 'EVENT', 1, '王主任', '13800000002', 2, 1);
 
 -- ---------------------------------------------
--- 网格数据（2个）
+-- 网格数据（街道-社区-网格-微网格 四级结构）
 -- ---------------------------------------------
-INSERT INTO `grid_info` (`id`, `grid_code`, `grid_name`, `grid_leader_id`, `area`, `lng`, `lat`, `address`, `status`) VALUES
-(1, 'GRID001', '城东第一网格', NULL, 2.50, 116.407400, 39.904200, '北京市东城区长安街1号', 1),
-(2, 'GRID002', '城东第二网格', NULL, 3.20, 116.417400, 39.914200, '北京市东城区建国门内大街2号', 1);
+INSERT INTO `grid_info` (`id`, `grid_code`, `grid_name`, `grid_level`, `parent_id`, `grid_leader_id`, `area`, `lng`, `lat`, `address`, `sort`, `status`) VALUES
+-- 街道级（1级）
+(1, 'STREET001', '城东区街道', 1, NULL, NULL, 15.50, 116.407400, 39.904200, '北京市东城区', 1, 1),
+(2, 'STREET002', '城西区街道', 1, NULL, NULL, 18.20, 116.397400, 39.914200, '北京市西城区', 2, 1),
+
+-- 社区级（2级）
+(3, 'COMM001', '长安街社区', 2, 1, NULL, 5.20, 116.405400, 39.906200, '东城区长安街社区', 1, 1),
+(4, 'COMM002', '王府井社区', 2, 1, NULL, 4.80, 116.412400, 39.908200, '东城区王府井社区', 2, 1),
+(5, 'COMM003', '金融街社区', 2, 2, NULL, 6.50, 116.395400, 39.916200, '西城区金融街社区', 1, 1),
+
+-- 网格级（3级）
+(6, 'GRID001', '长安街第一网格', 3, 3, NULL, 2.50, 116.404400, 39.905200, '东城区长安街1号', 1, 1),
+(7, 'GRID002', '长安街第二网格', 3, 3, NULL, 2.70, 116.406400, 39.907200, '东城区长安街2号', 2, 1),
+(8, 'GRID003', '王府井第一网格', 3, 4, NULL, 2.30, 116.411400, 39.907200, '东城区王府井大街1号', 1, 1),
+(9, 'GRID004', '金融街第一网格', 3, 5, NULL, 3.00, 116.394400, 39.915200, '西城区金融街1号', 1, 1),
+
+-- 微网格级（4级）
+(10, 'MICRO001', '长安街1号微网格', 4, 6, NULL, 0.80, 116.403800, 39.904800, '东城区长安街1号院', 1, 1),
+(11, 'MICRO002', '长安街2号微网格', 4, 6, NULL, 0.90, 116.405000, 39.905600, '东城区长安街2号院', 2, 1),
+(12, 'MICRO003', '王府井A区微网格', 4, 8, NULL, 1.00, 116.410800, 39.906800, '东城区王府井A区', 1, 1);
 
 -- ---------------------------------------------
--- 用户数据（5个）
+-- 用户数据
 -- 密码统一为：123456（BCrypt加密后）
 -- ---------------------------------------------
 INSERT INTO `sys_user` (`id`, `username`, `password`, `real_name`, `phone`, `email`, `status`, `role`, `dept_id`, `grid_id`) VALUES
-(1, 'admin',    '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '系统管理员', '13900000001', 'admin@example.com', 1, 'admin',        1, NULL),
-(2, 'leader1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格长张三',  '13900000002', 'leader1@example.com', 1, 'grid_leader',  2, 1),
-(3, 'worker1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员李四',  '13900000003', 'worker1@example.com', 1, 'worker',       2, 1),
-(4, 'worker2',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员王五',  '13900000004', 'worker2@example.com', 1, 'worker',       2, 2),
-(5, 'handler1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '处置员赵六',  '13900000005', 'handler1@example.com', 1, 'handler',      3, NULL);
+(1, 'admin',         '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '系统管理员',   '13900000001', 'admin@example.com',         1, 'admin',          1, NULL),
+(2, 'street_mgr1',   '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '街道管理员刘一', '13900000002', 'street1@example.com',       1, 'street_manager', 2, 1),
+(3, 'street_mgr2',   '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '街道管理员陈二', '13900000003', 'street2@example.com',       1, 'street_manager', 2, 2),
+(4, 'grid_leader1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格长张三',   '13900000004', 'leader1@example.com',       1, 'grid_leader',    2, 6),
+(5, 'grid_leader2',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格长李四',   '13900000005', 'leader2@example.com',       1, 'grid_leader',    2, 8),
+(6, 'worker1',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员王五',   '13900000006', 'worker1@example.com',       1, 'worker',         2, 10),
+(7, 'worker2',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员赵六',   '13900000007', 'worker2@example.com',       1, 'worker',         2, 11),
+(8, 'worker3',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员孙七',   '13900000008', 'worker3@example.com',       1, 'worker',         2, 12),
+(9, 'handler1',      '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '处置员周八',   '13900000009', 'handler1@example.com',      1, 'handler',        3, NULL),
+(10, 'supervisor1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '督查员吴九',   '13900000010', 'supervisor1@example.com',   1, 'supervisor',     1, 1);
 
 -- 回填网格长ID
-UPDATE `grid_info` SET `grid_leader_id` = 2 WHERE `id` = 1;
-UPDATE `grid_info` SET `grid_leader_id` = 2 WHERE `id` = 2;
+UPDATE `grid_info` SET `grid_leader_id` = 4 WHERE `id` = 6;
+UPDATE `grid_info` SET `grid_leader_id` = 5 WHERE `id` = 8;
 
 -- ---------------------------------------------
 -- 网格员关联数据
 -- ---------------------------------------------
 INSERT INTO `grid_member` (`grid_id`, `user_id`, `member_type`) VALUES
-(1, 2, 'grid_leader'),
-(1, 3, 'worker'),
-(2, 2, 'grid_leader'),
-(2, 4, 'worker');
+(6, 4, 'grid_leader'),
+(8, 5, 'grid_leader'),
+(10, 6, 'worker'),
+(11, 7, 'worker'),
+(12, 8, 'worker'),
+(6, 6, 'worker'),
+(6, 7, 'worker'),
+(8, 8, 'worker');
 
 -- ---------------------------------------------
 -- 示例事件数据
 -- ---------------------------------------------
 INSERT INTO `event_info` (`id`, `event_no`, `title`, `event_type`, `description`, `lng`, `lat`, `address`, `anonymous`, `reporter_id`, `reporter_name`, `reporter_phone`, `grid_id`, `status`, `priority`) VALUES
-(1, 'EV202401010001', '路灯损坏', 'public_facility', '城东第一网格区域内主路灯不亮，夜间通行不便。', 116.407400, 39.904200, '东长安街与王府井交叉口', 0, 3, '李四', '13900000003', 1, 'PENDING', 'NORMAL'),
-(2, 'EV202401010002', '下水道堵塞', 'environment', '居民小区门口下水道堵塞，污水外流。', 116.417400, 39.914200, '建国门内大街8号', 0, 4, '王五', '13900000004', 2, 'PROCESSING', 'HIGH');
+(1, 'EV202401010001', '路灯损坏', 'public_facility', '长安街1号微网格区域内主路灯不亮，夜间通行不便。', 116.403800, 39.904800, '东长安街1号院门口', 0, 6, '王五', '13900000006', 10, 'PENDING', 'NORMAL'),
+(2, 'EV202401010002', '下水道堵塞', 'environment', '王府井A区微网格居民小区门口下水道堵塞，污水外流。', 116.410800, 39.906800, '王府井A区北门', 0, 8, '孙七', '13900000008', 12, 'PROCESSING', 'HIGH'),
+(3, 'EV202401010003', '垃圾清运不及时', 'environment', '长安街第二网格区域内垃圾桶满溢，异味严重。', 116.406400, 39.907200, '长安街2号院旁', 0, 7, '赵六', '13900000007', 11, 'PENDING', 'LOW'),
+(4, 'EV202401010004', '邻里纠纷', 'dispute', '楼上楼下因噪音问题产生矛盾，需要调解。', 116.404400, 39.905200, '长安街第一网格3号楼', 1, NULL, '匿名居民', '13800000001', 6, 'COMPLETED', 'NORMAL');
 
 -- ---------------------------------------------
 -- 示例事件处理记录
 -- ---------------------------------------------
 INSERT INTO `event_process` (`event_id`, `node_name`, `handler_id`, `handler_name`, `action`, `comment`, `handle_time`) VALUES
-(1, '事件上报',   3, '李四', 'submit', '发现路灯损坏，请求维修。', '2024-01-01 09:30:00'),
-(2, '事件上报',   4, '王五', 'submit', '下水道堵塞严重，需紧急处理。', '2024-01-01 10:15:00'),
-(2, '事件受理',   2, '张三', 'accept', '已受理，已分派至处置中心。', '2024-01-01 10:30:00');
+(1, '事件上报',   6, '王五', 'submit', '发现路灯损坏，请求维修。', '2024-01-01 09:30:00'),
+(2, '事件上报',   8, '孙七', 'submit', '下水道堵塞严重，需紧急处理。', '2024-01-01 10:15:00'),
+(2, '事件受理',   5, '李四', 'accept', '已受理，已分派至处置中心。', '2024-01-01 10:30:00'),
+(3, '事件上报',   7, '赵六', 'submit', '垃圾桶满溢多日，影响环境。', '2024-01-02 08:45:00'),
+(4, '事件上报',   NULL, '匿名居民', 'submit', '噪音扰民，希望协调解决。', '2024-01-02 14:20:00'),
+(4, '事件受理',   4, '张三', 'accept', '已受理，安排网格员调解。', '2024-01-02 15:00:00'),
+(4, '事件处置',   6, '王五', 'process', '已上门调解，双方达成和解。', '2024-01-02 17:30:00'),
+(4, '事件办结',   4, '张三', 'complete', '事件已办结，居民满意。', '2024-01-02 18:00:00');
 
 -- ---------------------------------------------
 -- 示例通知
 -- ---------------------------------------------
 INSERT INTO `sys_notification` (`user_id`, `title`, `content`, `type`, `biz_id`, `is_read`) VALUES
-(2, '新事件待受理', '您有1条新的事件待受理：路灯损坏', 'event', 1, 0),
-(5, '新任务待处理', '您有1条新的任务待处理：下水道堵塞', 'task', 2, 0),
-(3, '事件受理通知', '您上报的事件【路灯损坏】已受理', 'event', 1, 1);
+(4, '新事件待受理', '您有2条新的事件待受理', 'event', 1, 0),
+(5, '新事件待受理', '您有1条新的事件待受理', 'event', 2, 0),
+(9, '新任务待处理', '您有1条新的任务待处理：下水道堵塞', 'task', 2, 0),
+(6, '事件受理通知', '您上报的事件【路灯损坏】已受理', 'event', 1, 1),
+(7, '事件受理通知', '您上报的事件【垃圾清运不及时】已受理', 'event', 3, 0),
+(10, '督查提醒', '长安街社区有1件逾期未处理事件', 'system', NULL, 0);
 
 -- ---------------------------------------------
 -- 9. 周边资源：摄像头 resource_camera

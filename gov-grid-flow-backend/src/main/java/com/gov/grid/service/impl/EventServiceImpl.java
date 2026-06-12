@@ -18,6 +18,7 @@ import com.gov.grid.enums.ProcessAction;
 import com.gov.grid.mapper.EventEvaluationMapper;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.EventProcessMapper;
+import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
@@ -118,6 +119,13 @@ public class EventServiceImpl implements EventService {
         }
         if (dto.getGridId() != null) {
             wrapper.eq(EventInfo::getGridId, dto.getGridId());
+        } else {
+            List<Long> accessibleGridIds = DataScopeUtils.getAccessibleGridIds();
+            if (CollUtil.isNotEmpty(accessibleGridIds)) {
+                wrapper.in(EventInfo::getGridId, accessibleGridIds);
+            } else {
+                wrapper.eq(EventInfo::getId, -1);
+            }
         }
         if (StrUtil.isNotBlank(dto.getStartTime())) {
             wrapper.ge(EventInfo::getCreatedAt, dto.getStartTime());

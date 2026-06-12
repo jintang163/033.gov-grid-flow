@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -20,6 +21,12 @@ public class GridInfo extends BaseEntity {
 
     @TableField("grid_name")
     private String gridName;
+
+    @TableField("grid_level")
+    private Integer gridLevel;
+
+    @TableField("parent_id")
+    private Long parentId;
 
     @TableField("grid_leader_id")
     private Long gridLeaderId;
@@ -39,6 +46,15 @@ public class GridInfo extends BaseEntity {
     @TableField("address")
     private String address;
 
+    @TableField("sort")
+    private Integer sort;
+
     @TableField("status")
     private Integer status;
+
+    @TableField(exist = false)
+    private List<GridInfo> children;
+
+    @TableField(exist = false)
+    private String gridLeaderName;
 }

@@ -28,6 +28,27 @@ public class GridController {
         return Result.success(list);
     }
 
+    @ApiOperation("获取网格树形结构")
+    @GetMapping("/tree")
+    public Result<List<GridInfo>> getGridTree() {
+        List<GridInfo> tree = gridService.getGridTree();
+        return Result.success(tree);
+    }
+
+    @ApiOperation("按层级获取网格树")
+    @GetMapping("/tree/level")
+    public Result<List<GridInfo>> getGridTreeByLevel(@RequestParam Integer level) {
+        List<GridInfo> tree = gridService.getGridTreeByLevel(level);
+        return Result.success(tree);
+    }
+
+    @ApiOperation("获取子网格列表")
+    @GetMapping("/children")
+    public Result<List<GridInfo>> getChildren(@RequestParam(required = false) Long parentId) {
+        List<GridInfo> children = gridService.getChildren(parentId);
+        return Result.success(children);
+    }
+
     @ApiOperation("根据ID获取单个网格")
     @GetMapping("/{id}")
     public Result<GridInfo> getById(@PathVariable Long id) {
@@ -55,7 +76,6 @@ public class GridController {
     @ApiOperation("新增网格")
     @PostMapping
     public Result<GridInfo> create(@RequestBody GridInfo gridInfo, HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
         GridInfo created = gridService.create(gridInfo);
         return Result.success(created);
     }
@@ -63,7 +83,6 @@ public class GridController {
     @ApiOperation("修改网格")
     @PutMapping
     public Result<GridInfo> update(@RequestBody GridInfo gridInfo, HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
         GridInfo updated = gridService.update(gridInfo);
         return Result.success(updated);
     }
@@ -71,20 +90,7 @@ public class GridController {
     @ApiOperation("删除网格")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id, HttpServletRequest request) {
-        Long userId = getCurrentUserId(request);
         gridService.delete(id);
         return Result.success();
-    }
-
-    private Long getCurrentUserId(HttpServletRequest request) {
-        String userIdStr = request.getHeader("X-User-Id");
-        if (userIdStr != null && !userIdStr.isEmpty()) {
-            try {
-                return Long.parseLong(userIdStr);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
     }
 }
