@@ -77,7 +77,23 @@
 
       <el-table :data="tableData" border stripe v-loading="loading" style="margin-top: 16px">
         <el-table-column prop="eventNo" label="事件编号" width="160" />
-        <el-table-column prop="title" label="事件标题" min-width="200" show-overflow-tooltip />
+        <el-table-column label="事件标题" min-width="240" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div class="title-cell">
+              <el-tag
+                v-if="row.isHighRecurrence === 1 || row.isHighRecurrence === true"
+                type="danger"
+                effect="dark"
+                size="small"
+                class="recurrence-tag"
+              >
+                <el-icon style="vertical-align: -2px; margin-right: 2px"><WarningFilled /></el-icon>
+                复发{{ row.recurrenceCount || 0 }}次
+              </el-tag>
+              <span class="title-text">{{ row.title }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="eventTypeName" label="类型" width="120">
           <template #default="{ row }">
             <el-tag type="info">{{ row.eventTypeName || '-' }}</el-tag>
@@ -154,6 +170,7 @@
               <el-button link type="success" size="small" @click="handleVerify(row)">核查</el-button>
             </template>
             <el-button link type="warning" size="small" @click="handleEscalate(row)">督办</el-button>
+            <el-button link type="primary" size="small" @click="handleViewGraph(row)">关联</el-button>
             <el-button link type="info" size="small" @click="handleViewDiagram(row)">流程图</el-button>
             <el-button link type="primary" size="small" @click="handleViewHistory(row)">历史</el-button>
           </template>
@@ -577,6 +594,44 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="graphDialogVisible" title="事件关联图谱" width="1000px" destroy-on-close>
+      <div class="graph-container" v-loading="graphLoading">
+        <div class="graph-header">
+          <div v-if="graphData" class="graph-stats">
+            <el-statistic title="节点数" :value="graphData.nodes?.length || 0" />
+            <el-statistic title="关系数" :value="graphData.edges?.length || 0" />
+            <el-statistic
+              v-if="graphData.recurrenceGroup"
+              title="同组复发数"
+              :value="graphData.recurrenceGroup.totalCount || 0"
+            />
+          </div>
+          <div class="graph-legend">
+            <span class="legend-item"><i class="dot dot-event" />事件</span>
+            <span class="legend-item"><i class="dot dot-group" />复发组</span>
+            <span class="legend-item"><i class="dot dot-reporter" />上报人</span>
+            <span class="legend-item"><i class="dot dot-grid" />网格</span>
+          </div>
+        </div>
+        <div ref="graphChartRef" class="graph-chart"></div>
+        <div v-if="graphData?.recurrenceGroup" class="graph-group">
+          <el-divider content-position="left">同复发组事件</el-divider>
+          <el-table
+            :data="graphData.recurrenceGroup.events || []"
+            size="small"
+            border
+            style="width: 100%"
+          >
+            <el-table-column prop="eventNo" label="事件编号" width="160" />
+            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="status" label="状态" width="100" />
+            <el-table-column prop="createdAt" label="上报时间" width="170" />
+            <el-table-column prop="deadlineAt" label="截止时间" width="170" />
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -603,7 +658,8 @@ import {
   User,
   MagicStick,
   View,
-  ArrowRight
+  ArrowRight,
+  WarningFilled
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -621,6 +677,7 @@ import {
 } from '@/api/event'
 import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
+import { getEventRelationGraph } from '@/api/analysis'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
@@ -677,6 +734,12 @@ const diagramDialogVisible = ref(false)
 const diagramLoading = ref(false)
 const diagramBase64 = ref('')
 const scale = ref(1)
+
+const graphDialogVisible = ref(false)
+const graphLoading = ref(false)
+const graphData = ref(null)
+const graphChartRef = ref(null)
+let graphChart = null
 
 const nearbyData = reactive({
   loading: false,
@@ -813,6 +876,91 @@ function formatRemainingText(row) {
   return `${resolveProgressPercent(row)}%`
 }
 
+async function handleViewGraph(row) {
+  graphDialogVisible.value = true
+  graphLoading.value = true
+  graphData.value = null
+  await nextTick()
+  try {
+    const res = await getEventRelationGraph(row.id || row.eventId, 2)
+    graphData.value = res?.data || res
+    renderGraphChart(graphData.value)
+  } catch (e) {
+    console.error('获取事件关联图谱失败', e)
+    ElMessage.error(e.message || '获取关联图谱失败')
+  } finally {
+    graphLoading.value = false
+  }
+}
+
+function renderGraphChart(data) {
+  if (!graphChartRef.value) return
+  if (!graphChart) {
+    graphChart = echarts.init(graphChartRef.value)
+    const onResize = () => graphChart && graphChart.resize()
+    window.addEventListener('resize', onResize)
+  }
+  const nodes = (data?.nodes || []).map(n => ({
+    id: n.id,
+    name: n.label || n.id,
+    symbolSize: n.symbolSize || 30,
+    category: n.category || 0,
+    value: n.description || '',
+    x: n.x,
+    y: n.y
+  }))
+  const links = (data?.edges || []).map(e => ({
+    source: e.source,
+    target: e.target,
+    label: { show: !!e.label, formatter: e.label || '', fontSize: 10 },
+    value: e.relationType
+  }))
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (p) => {
+        if (p.dataType === 'node') {
+          return `<b>${p.data.name}</b><br/>${p.data.value || ''}`
+        }
+        return p.data.value || p.data.label || ''
+      }
+    },
+    legend: [{
+      data: [
+        { name: '事件' },
+        { name: '关联事件' },
+        { name: '复发组' },
+        { name: '上报人' },
+        { name: '网格' }
+      ],
+      top: 0
+    }],
+    animationDurationUpdate: 1500,
+    animationEasingUpdate: 'quinticInOut',
+    series: [
+      {
+        type: 'graph',
+        layout: 'force',
+        roam: true,
+        label: { show: true, position: 'bottom', fontSize: 11 },
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 10],
+        force: { repulsion: 450, edgeLength: [80, 160], gravity: 0.1 },
+        categories: [
+          { name: '事件', itemStyle: { color: '#409EFF' } },
+          { name: '关联事件', itemStyle: { color: '#67C23A' } },
+          { name: '复发组', itemStyle: { color: '#F56C6C' } },
+          { name: '上报人', itemStyle: { color: '#E6A23C' } },
+          { name: '网格', itemStyle: { color: '#909399' } }
+        ],
+        data: nodes,
+        links
+      }
+    ]
+  }
+  graphChart.setOption(option, true)
+}
+
 async function handleEscalate(row) {
   try {
     await ElMessageBox.confirm(
@@ -938,6 +1086,7 @@ function handleReset() {
   searchForm.status = ''
   searchForm.eventTypeId = ''
   searchForm.gridId = ''
+  searchForm.urgeLevel = ''
   searchForm.dateRange = []
   pagination.pageNum = 1
   fetchList()
@@ -1748,6 +1897,82 @@ onMounted(() => {
         transition: transform 0.2s ease;
         max-width: 100%;
       }
+    }
+  }
+
+  .title-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .recurrence-tag {
+      flex-shrink: 0;
+    }
+
+    .title-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .graph-container {
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 12px 16px;
+      background: #f5f7fa;
+      border-radius: 6px;
+
+      .graph-stats {
+        display: flex;
+        gap: 24px;
+
+        :deep(.el-statistic__head) {
+          font-size: 12px;
+        }
+
+        :deep(.el-statistic__content) {
+          font-size: 18px;
+          font-weight: 600;
+        }
+      }
+
+      .graph-legend {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: #606266;
+
+        .legend-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+
+          .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+          }
+
+          .dot-event { background: #409EFF; }
+          .dot-group { background: #F56C6C; }
+          .dot-reporter { background: #E6A23C; }
+          .dot-grid { background: #909399; }
+        }
+      }
+    }
+
+    .graph-chart {
+      width: 100%;
+      height: 480px;
+    }
+
+    .graph-group {
+      margin-top: 16px;
     }
   }
 }

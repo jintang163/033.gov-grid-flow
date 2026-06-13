@@ -83,4 +83,22 @@ public class EventInfo extends BaseEntity {
 
     @TableField("urge_level")
     private Integer urgeLevel;
+
+    @TableField("is_high_recurrence")
+    private Integer isHighRecurrence;
+
+    @TableField("recurrence_count")
+    private Integer recurrenceCount;
+
+    @TableField("recurrence_group_key")
+    private String recurrenceGroupKey;
+
+    @TableField(exist = false)
+    private Integer realTimeUrgeLevel;
+
+    @TableField(exist = false)
+    private Double progressPercent;
+
+    @TableField(exist = false)
+    private Double remainingHours;
 }

@@ -25,6 +25,7 @@ import com.gov.grid.mq.EventSyncProducer;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventService;
 import com.gov.grid.service.EventUrgeService;
+import com.gov.grid.service.EventAnalysisService;
 import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
@@ -61,6 +62,7 @@ public class EventServiceImpl implements EventService {
     private final ImageComparisonService imageComparisonService;
     private final EventSyncProducer eventSyncProducer;
     private final EventUrgeService eventUrgeService;
+    private final EventAnalysisService eventAnalysisService;
 
     @Override
     public EventInfo reportEvent(EventReportDTO dto, Long userId) {
@@ -313,6 +315,13 @@ public class EventServiceImpl implements EventService {
 
         log.info("[EventService] 事件上报成功，事件编号：{}，事件ID：{}，clientId：{}",
                 eventInfo.getEventNo(), eventInfo.getId(), eventInfo.getClientId());
+
+        try {
+            eventAnalysisService.analyzeAndMarkRecurrence(eventInfo.getId());
+        } catch (Exception e) {
+            log.warn("[EventService] 事件关联分析标记失败，事件ID：{}", eventInfo.getId(), e);
+        }
+
         return eventInfo;
     }
 

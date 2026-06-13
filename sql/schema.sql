@@ -124,6 +124,9 @@ CREATE TABLE `event_info` (
   `dispatched_at`       datetime     DEFAULT NULL COMMENT '分派处置时间（计时起点）',
   `deadline_at`         datetime     DEFAULT NULL COMMENT '处置截止时间',
   `urge_level`          int(11)      DEFAULT 0 COMMENT '催办等级：0-未催办 1-黄色预警 2-红色超时 3-升级督办',
+  `is_high_recurrence`  tinyint(1)   NOT NULL DEFAULT 0 COMMENT '是否高复发事件：0-否 1-是',
+  `recurrence_count`    int(11)      NOT NULL DEFAULT 1 COMMENT '该地点同类事件复发次数',
+  `recurrence_group_key` varchar(100) DEFAULT NULL COMMENT '复发分组key（eventType+lng+lat哈希后生成）',
   `process_instance_id` varchar(64)  DEFAULT NULL COMMENT 'Flowable流程实例ID',
   `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -141,6 +144,8 @@ CREATE TABLE `event_info` (
   KEY `idx_dispatched_at` (`dispatched_at`),
   KEY `idx_deadline_at` (`deadline_at`),
   KEY `idx_urge_level` (`urge_level`),
+  KEY `idx_is_high_recurrence` (`is_high_recurrence`),
+  KEY `idx_recurrence_group_key` (`recurrence_group_key`),
   KEY `idx_process_instance_id` (`process_instance_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件表';
 

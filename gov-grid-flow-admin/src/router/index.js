@@ -97,6 +97,18 @@ const routes = [
         meta: { title: '催办记录', icon: 'Bell', roles: ['admin', 'street_manager', 'grid_leader'] }
       }
     ]
+  },
+  {
+    path: '/analysis',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'index',
+        name: 'EventAnalysis',
+        component: () => import('@/views/analysis/index.vue'),
+        meta: { title: '关联分析报告', icon: 'DataLine', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
+      }
+    ]
   }
 ]
 
