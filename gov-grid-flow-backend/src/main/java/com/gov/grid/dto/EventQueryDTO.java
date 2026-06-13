@@ -19,6 +19,8 @@ public class EventQueryDTO {
 
     private Long reporterId;
 
+    private Integer urgeLevel;
+
     private Integer pageNum;
 
     private Integer pageSize;

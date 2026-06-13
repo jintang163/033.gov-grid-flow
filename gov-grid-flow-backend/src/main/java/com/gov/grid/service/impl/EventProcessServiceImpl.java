@@ -17,6 +17,7 @@ import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
+import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.workflow.WorkflowService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class EventProcessServiceImpl implements EventProcessService {
     private final EventProcessMapper eventProcessMapper;
     private final SysUserMapper sysUserMapper;
     private final ImageComparisonService imageComparisonService;
+    private final EventUrgeService eventUrgeService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -185,10 +187,15 @@ public class EventProcessServiceImpl implements EventProcessService {
         process.setHandleTime(LocalDateTime.now());
         eventProcessMapper.insert(process);
 
+        LocalDateTime now = LocalDateTime.now();
+        eventInfo.setDispatchedAt(now);
+        eventInfo.setDeadlineAt(eventUrgeService.calculateDeadline(eventInfo.getEventType(), now));
+        eventInfo.setUrgeLevel(0);
         eventInfo.setStatus(EventStatus.DISPATCHED.getCode());
         eventInfoMapper.updateById(eventInfo);
 
-        log.info("任务分派成功，事件ID：{}，任务ID：{}，分派给：{}，操作人：{}", eventId, taskId, assigneeId, userId);
+        log.info("任务分派成功，事件ID：{}，任务ID：{}，分派给：{}，截止时间：{}，操作人：{}",
+                eventId, taskId, assigneeId, eventInfo.getDeadlineAt(), userId);
     }
 
     @Override

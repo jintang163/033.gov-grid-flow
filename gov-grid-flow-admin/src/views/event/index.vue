@@ -98,18 +98,40 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="urgeLevel" label="催办状态" width="110">
+        <el-table-column prop="urgeLevel" label="处置进度" width="260">
           <template #default="{ row }">
-            <el-tag :type="getUrgeTagType(row.urgeLevel)" effect="dark" size="small">
-              {{ getUrgeLevelLabel(row.urgeLevel) }}
-            </el-tag>
+            <div class="urge-progress-cell" :class="urgeProgressClass(row)">
+              <div class="urge-progress-header">
+                <el-tag :type="getRealTimeUrgeTagType(row)" effect="dark" size="small">
+                  {{ getRealTimeUrgeLabel(row) }}
+                </el-tag>
+                <span class="urge-progress-text">
+                  {{ formatRemainingText(row) }}
+                </span>
+              </div>
+              <el-progress
+                v-if="row.progressPercent != null || row.realTimeUrgeLevel != null"
+                :percentage="resolveProgressPercent(row)"
+                :stroke-width="8"
+                :show-text="false"
+                :color="resolveProgressColor(row)"
+              />
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="截止时间" width="170">
           <template #default="{ row }">
-            <span v-if="row.deadlineAt" :class="getDeadlineClass(row.urgeLevel, row.deadlineAt)">
-              {{ row.deadlineAt }}
-            </span>
+            <div v-if="row.deadlineAt" :class="getDeadlineClass(row)">
+              <div>{{ row.deadlineAt }}</div>
+              <div class="deadline-hours" v-if="row.remainingHours != null">
+                <template v-if="resolveUrgeLevel(row) >= 2">
+                  已超时 {{ Math.round(Math.max(0, -row.remainingHours)) }} 小时
+                </template>
+                <template v-else>
+                  剩余 {{ formatRemainingHours(row.remainingHours) }}
+                </template>
+              </div>
+            </div>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
@@ -727,19 +749,68 @@ function getUrgeLevelLabel(level) {
 }
 
 function getUrgeTagType(level) {
-  const map = {
-    0: 'info',
-    1: 'warning',
-    2: 'danger',
-    3: 'danger'
-  }
+  const map = { 0: 'info', 1: 'warning', 2: 'danger', 3: 'danger' }
   return map[level] || 'info'
 }
 
-function getDeadlineClass(level) {
+function resolveUrgeLevel(row) {
+  if (row == null) return 0
+  if (row.realTimeUrgeLevel != null && row.realTimeUrgeLevel !== '') return row.realTimeUrgeLevel
+  if (row.urgeLevel != null && row.urgeLevel !== '') return row.urgeLevel
+  return 0
+}
+
+function getRealTimeUrgeTagType(row) {
+  return getUrgeTagType(resolveUrgeLevel(row))
+}
+
+function getRealTimeUrgeLabel(row) {
+  return getUrgeLevelLabel(resolveUrgeLevel(row))
+}
+
+function getDeadlineClass(row) {
+  const level = resolveUrgeLevel(row)
   if (level >= 2) return 'deadline-overdue'
   if (level === 1) return 'deadline-warning'
   return 'deadline-normal'
+}
+
+function urgeProgressClass(row) {
+  const level = resolveUrgeLevel(row)
+  if (level >= 3) return 'urge-supervise'
+  if (level === 2) return 'urge-overdue'
+  if (level === 1) return 'urge-warning'
+  return 'urge-normal'
+}
+
+function resolveProgressPercent(row) {
+  let p = row.progressPercent
+  if (p == null || isNaN(p)) {
+    const level = resolveUrgeLevel(row)
+    if (level >= 2) return 100
+    if (level === 1) return 85
+    return 50
+  }
+  return Math.round(Math.min(100, Math.max(0, p)))
+}
+
+function resolveProgressColor(row) {
+  const level = resolveUrgeLevel(row)
+  if (level >= 2) return '#f56c6c'
+  if (level === 1) return '#e6a23c'
+  return '#67c23a'
+}
+
+function formatRemainingHours(hours) {
+  if (hours == null || isNaN(hours)) return '-'
+  const h = Math.abs(hours)
+  if (h < 1) return `${Math.round(h * 60)} 分钟`
+  if (h < 48) return `${h.toFixed(1)} 小时`
+  return `${(h / 24).toFixed(1)} 天`
+}
+
+function formatRemainingText(row) {
+  return `${resolveProgressPercent(row)}%`
 }
 
 async function handleEscalate(row) {
@@ -849,42 +920,12 @@ async function fetchList() {
     tableData.value = res?.rows || res?.data?.list || res?.data || []
     pagination.total = res?.total || res?.data?.total || 0
   } catch (e) {
-    tableData.value = generateMockData()
-    pagination.total = tableData.value.length
+    console.error('获取事件列表失败', e)
+    tableData.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
-}
-
-function generateMockData() {
-  const statuses = ['PENDING', 'APPROVED', 'DISPATCHED', 'HANDLED', 'COMPLETED', 'REJECTED']
-  const priorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT']
-  const eventTypes = ['市政设施', '环境卫生', '治安隐患', '民生服务']
-  const grids = gridList.value.length ? gridList.value : [{ name: '东城区第一网格' }, { name: '西城区第三网格' }]
-  const reporters = ['张三', '李四', '王五', '赵六']
-  const handlers = ['处置员A', '处置员B', '处置员C']
-  const titles = [
-    '路灯损坏需要维修',
-    '井盖缺失存在安全隐患',
-    '社区绿化需要修剪',
-    '下水道堵塞污水外溢',
-    '垃圾桶满溢无人清理',
-    '路面破损影响通行'
-  ]
-  return Array.from({ length: 15 }, (_, i) => ({
-    id: i + 1,
-    eventNo: `EV${String(202401001 + i).padStart(10, '0')}`,
-    title: titles[i % titles.length],
-    eventTypeId: (i % 4) + 1,
-    eventTypeName: eventTypes[i % eventTypes.length],
-    gridId: grids[i % grids.length].id,
-    gridName: grids[i % grids.length].name,
-    status: statuses[i % statuses.length],
-    priority: priorities[i % priorities.length],
-    reporterName: reporters[i % reporters.length],
-    reportTime: `2024-01-${String(10 + (i % 20)).padStart(2, '0')} 0${9 + (i % 9)}:${String(10 + (i % 50)).padStart(2, '0')}:00`,
-    handlerName: i % 3 === 0 ? '-' : handlers[i % handlers.length]
-  }))
 }
 
 function handleSearch() {
@@ -907,7 +948,7 @@ function handleAdd() {
 }
 
 function handleExport() {
-  ElMessage.success('导出任务已提交，请稍后查看')
+  ElMessage.warning('导出功能开发中，请联系管理员配置导出服务')
 }
 
 async function handleViewDetail(row) {
@@ -915,19 +956,8 @@ async function handleViewDetail(row) {
     const res = await getEventDetail(row.id || row.eventId)
     eventDetail.value = res?.data || res
   } catch (e) {
-    eventDetail.value = {
-      ...row,
-      description: '社区居民反映该路段路灯已损坏三天，夜间出行存在安全隐患，希望尽快修复。',
-      address: '东城区朝阳路88号门口',
-      longitude: '116.4074',
-      latitude: '39.9042',
-      reporterPhone: '138****8888',
-      mediaList: [
-        { type: 'IMAGE', url: 'https://picsum.photos/400/300?random=1', name: '现场照片1.jpg' },
-        { type: 'IMAGE', url: 'https://picsum.photos/400/300?random=2', name: '现场照片2.jpg' },
-        { type: 'VIDEO', url: '#', name: '现场视频.mp4' }
-      ]
-    }
+    console.error('获取事件详情失败', e)
+    eventDetail.value = row
   }
   detailDialogVisible.value = true
   const lng = eventDetail.value?.longitude || eventDetail.value?.lng
@@ -1374,6 +1404,47 @@ onMounted(() => {
   .deadline-overdue {
     color: #f56c6c;
     font-weight: bold;
+  }
+
+  .deadline-hours {
+    font-size: 11px;
+    margin-top: 2px;
+    color: inherit;
+    opacity: 0.85;
+  }
+
+  .urge-progress-cell {
+    padding: 2px 0;
+
+    &.urge-normal {
+      .el-tag { background-color: #67c23a; border-color: #67c23a; color: #fff; }
+    }
+    &.urge-warning {
+      .el-tag { background-color: #e6a23c; border-color: #e6a23c; color: #fff; }
+    }
+    &.urge-overdue {
+      .el-tag { background-color: #f56c6c; border-color: #f56c6c; color: #fff; }
+    }
+    &.urge-supervise {
+      .el-tag { background-color: #c0392b; border-color: #c0392b; color: #fff; }
+    }
+  }
+
+  .urge-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .urge-progress-text {
+    font-size: 12px;
+    color: #606266;
+    font-weight: 600;
+  }
+
+  :deep(.el-progress-bar__outer) {
+    background-color: #ebeef5;
   }
 
   .action-bar {

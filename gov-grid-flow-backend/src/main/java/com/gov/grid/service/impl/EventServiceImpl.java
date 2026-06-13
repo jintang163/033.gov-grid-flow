@@ -24,9 +24,11 @@ import com.gov.grid.mapper.EventProcessMapper;
 import com.gov.grid.mq.EventSyncProducer;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.EventService;
+import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
+import com.gov.grid.vo.WarningInfoVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -58,6 +60,7 @@ public class EventServiceImpl implements EventService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ImageComparisonService imageComparisonService;
     private final EventSyncProducer eventSyncProducer;
+    private final EventUrgeService eventUrgeService;
 
     @Override
     public EventInfo reportEvent(EventReportDTO dto, Long userId) {
@@ -361,7 +364,27 @@ public class EventServiceImpl implements EventService {
         wrapper.orderByDesc(EventInfo::getCreatedAt);
 
         Page<EventInfo> result = eventInfoMapper.selectPage(page, wrapper);
-        return PageResult.of(result.getTotal(), result.getRecords(), pageNum, pageSize);
+        List<EventInfo> records = result.getRecords();
+        if (CollUtil.isNotEmpty(records)) {
+            List<Long> excludeIds = new ArrayList<>();
+            for (EventInfo e : records) {
+                try {
+                    WarningInfoVO vo = eventUrgeService.getWarningInfo(e);
+                    e.setProgressPercent(vo.getProgressPercent() == null ? 0 : vo.getProgressPercent());
+                    e.setRemainingHours(vo.getRemainingHours() == null ? 0 : vo.getRemainingHours());
+                    e.setRealTimeUrgeLevel(vo.getUrgeLevel() == null ? 0 : vo.getUrgeLevel());
+                    if (dto.getUrgeLevel() != null && !dto.getUrgeLevel().equals(e.getRealTimeUrgeLevel())) {
+                        excludeIds.add(e.getId());
+                    }
+                } catch (Exception ex) {
+                    log.warn("计算预警信息失败，事件ID：{}", e.getId(), ex);
+                }
+            }
+            if (dto.getUrgeLevel() != null && !excludeIds.isEmpty()) {
+                records.removeIf(e -> excludeIds.contains(e.getId()));
+            }
+        }
+        return PageResult.of(result.getTotal(), records, pageNum, pageSize);
     }
 
     @Override

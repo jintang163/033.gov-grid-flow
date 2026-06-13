@@ -1,143 +1,232 @@
 package com.gov.grid.service.impl;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.gov.grid.common.PageResult;
-import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.entity.SysNotification;
-import com.gov.grid.entity.SysUser;
 import com.gov.grid.mapper.SysNotificationMapper;
-import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
-    private static final String NOTIFICATION_TOPIC = "GOV_GRID_NOTIFICATION";
+    @Value("${notify.sms.enabled:false}")
+    private boolean smsEnabled;
 
-    private final RocketMQTemplate rocketMQTemplate;
-    private final SysNotificationMapper notificationMapper;
-    private final SysUserMapper sysUserMapper;
+    @Value("${notify.sms.access-key:}")
+    private String smsAccessKey;
 
-    @Override
-    public void sendNotification(Long userId, String title, String content, String type, String bizId) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("userId", userId);
-        message.put("title", title);
-        message.put("content", content);
-        message.put("type", type);
-        message.put("bizId", bizId);
-        message.put("action", "SAVE_NOTIFICATION");
+    @Value("${notify.sms.sign-name:网格通知}")
+    private String smsSignName;
 
-        rocketMQTemplate.convertAndSend(NOTIFICATION_TOPIC, JSONUtil.toJsonStr(message));
-        log.info("发送站内通知消息，userId：{}，title：{}", userId, title);
-    }
+    @Value("${notify.sms.endpoint:https://dysmsapi.aliyuncs.com}")
+    private String smsEndpoint;
 
-    @Override
-    public void sendSms(String phone, String content) {
-        log.info("【模拟发送短信】手机号：{}，内容：{}", phone, content);
+    @Value("${notify.email.enabled:false}")
+    private boolean emailEnabled;
 
-        Map<String, Object> message = new HashMap<>();
-        message.put("phone", phone);
-        message.put("content", content);
-        message.put("action", "SEND_SMS");
+    @Value("${notify.email.from:noreply@gov-grid.local}")
+    private String emailFrom;
 
-        rocketMQTemplate.convertAndSend(NOTIFICATION_TOPIC, JSONUtil.toJsonStr(message));
-    }
+    @Value("${notify.app.enabled:true}")
+    private boolean appEnabled;
+
+    @Value("${notify.async:true}")
+    private boolean async;
+
+    private final SysNotificationMapper sysNotificationMapper;
+    private final JavaMailSender javaMailSender;
 
     @Override
-    public void sendDingTalk(String userId, String content) {
-        log.info("【模拟发送钉钉】用户ID：{}，内容：{}", userId, content);
-
-        Map<String, Object> message = new HashMap<>();
-        message.put("userId", userId);
-        message.put("content", content);
-        message.put("action", "SEND_DINGTALK");
-
-        rocketMQTemplate.convertAndSend(NOTIFICATION_TOPIC, JSONUtil.toJsonStr(message));
-    }
-
-    @Override
-    public void markAsRead(Long id, Long userId) {
-        SysNotification notification = notificationMapper.selectById(id);
-        if (notification == null) {
-            throw new BusinessException("通知不存在");
+    public boolean sendSms(String phone, String templateCode, Map<String, Object> params) {
+        if (!smsEnabled) {
+            log.warn("[SMS] 短信功能未启用，模拟发送到 {}，模板：{}，参数：{}", phone, templateCode, params);
+            return true;
         }
-        if (!notification.getUserId().equals(userId)) {
-            throw new BusinessException("无权操作该通知");
+        if (StrUtil.isBlank(phone)) {
+            log.warn("[SMS] 手机号为空，跳过发送");
+            return false;
         }
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("PhoneNumbers", phone);
+            body.put("SignName", smsSignName);
+            body.put("TemplateCode", templateCode);
+            body.put("TemplateParam", JSONUtil.toJsonStr(params == null ? new HashMap<>() : params));
 
-        LambdaUpdateWrapper<SysNotification> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SysNotification::getId, id)
-                .set(SysNotification::getIsRead, 1);
-        notificationMapper.update(null, wrapper);
-        log.info("通知标记已读，通知ID：{}，用户ID：{}", id, userId);
+            HttpResponse response = HttpRequest.post(smsEndpoint)
+                    .header("AccessKeyId", smsAccessKey)
+                    .body(JSONUtil.toJsonStr(body))
+                    .timeout(10000)
+                    .execute();
+
+            if (response.isOk()) {
+                Map<String, Object> resp = JSONUtil.toBean(response.body(), Map.class);
+                boolean success = "OK".equals(resp.get("Code"));
+                log.info("[SMS] 发送到 {} {}，响应：{}", phone, success ? "成功" : "失败", response.body());
+                return success;
+            } else {
+                log.error("[SMS] HTTP失败，statusCode：{}，body：{}", response.getStatus(), response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("[SMS] 发送异常，phone：{}", phone, e);
+            return false;
+        }
     }
 
     @Override
-    public void markAllAsRead(Long userId) {
-        LambdaUpdateWrapper<SysNotification> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SysNotification::getUserId, userId)
-                .eq(SysNotification::getIsRead, 0)
-                .set(SysNotification::getIsRead, 1);
-        notificationMapper.update(null, wrapper);
-        log.info("用户全部通知标记已读，用户ID：{}", userId);
+    public boolean sendEmail(String to, String subject, String content) {
+        if (!emailEnabled) {
+            log.warn("[EMAIL] 邮件功能未启用，模拟发送到 {}，主题：{}，内容：{}", to, subject, content);
+            return true;
+        }
+        if (StrUtil.isBlank(to)) {
+            log.warn("[EMAIL] 收件人为空，跳过发送");
+            return false;
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(emailFrom);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(content);
+            javaMailSender.send(message);
+            log.info("[EMAIL] 邮件发送成功，to：{}，subject：{}", to, subject);
+            return true;
+        } catch (Exception e) {
+            log.error("[EMAIL] 发送异常，to：{}", to, e);
+            return false;
+        }
     }
 
     @Override
-    public Long getUnreadCount(Long userId) {
-        LambdaQueryWrapper<SysNotification> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysNotification::getUserId, userId)
-                .eq(SysNotification::getIsRead, 0);
-        return notificationMapper.selectCount(wrapper);
+    public boolean sendAppPush(Long userId, String title, String content, String type, Long bizId) {
+        if (!appEnabled || userId == null) {
+            log.warn("[APP] APP推送未启用或userId为空，userId：{}", userId);
+            return userId != null;
+        }
+        try {
+            SysNotification notification = new SysNotification();
+            notification.setUserId(userId);
+            notification.setTitle(title);
+            notification.setContent(content);
+            notification.setType(StrUtil.isNotBlank(type) ? type : "SYSTEM");
+            notification.setBizId(bizId);
+            notification.setIsRead(0);
+            sysNotificationMapper.insert(notification);
+            log.info("[APP] 站内通知写入成功，userId：{}，title：{}", userId, title);
+            return true;
+        } catch (Exception e) {
+            log.error("[APP] 站内通知写入异常，userId：{}", userId, e);
+            return false;
+        }
     }
 
     @Override
-    public PageResult<SysNotification> getNotificationList(Long userId, Integer pageNum, Integer pageSize) {
-        Integer currentPage = pageNum != null ? pageNum : 1;
-        Integer currentSize = pageSize != null ? pageSize : 10;
+    public boolean sendByChannel(String channel, Long receiverId, String receiverName, String receiverPhone,
+                                 String receiverEmail, String title, String content, String type, Long bizId) {
+        if (StrUtil.isBlank(channel)) {
+            channel = "APP";
+        }
+        String finalChannel = channel.toUpperCase();
+        Runnable task = () -> doSendByChannel(finalChannel, receiverId, receiverName, receiverPhone,
+                receiverEmail, title, content, type, bizId);
 
-        Page<SysNotification> page = new Page<>(currentPage, currentSize);
-        LambdaQueryWrapper<SysNotification> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysNotification::getUserId, userId)
-                .orderByDesc(SysNotification::getCreatedAt);
-
-        Page<SysNotification> result = notificationMapper.selectPage(page, wrapper);
-        return PageResult.of(result.getTotal(), result.getRecords(), currentPage, currentSize);
+        if (async) {
+            try {
+                CompletableFuture.runAsync(task);
+            } catch (Exception e) {
+                log.error("[NOTIFY] 异步发送提交失败", e);
+                task.run();
+            }
+            return true;
+        } else {
+            task.run();
+            return true;
+        }
     }
 
-    @Override
-    public void callMember(Long userId) {
-        if (userId == null) {
-            throw new BusinessException("用户ID不能为空");
+    private void doSendByChannel(String channel, Long receiverId, String receiverName, String receiverPhone,
+                                 String receiverEmail, String title, String content, String type, Long bizId) {
+        boolean allOk = true;
+        StringBuilder errorBuf = new StringBuilder();
+
+        switch (channel) {
+            case "ALL":
+                if (!sendSms(receiverPhone, resolveSmsTemplate(type), buildParams(title, content, receiverName))) {
+                    allOk = false;
+                    errorBuf.append("SMS_FAIL;");
+                }
+                if (!sendEmail(receiverEmail, title, content)) {
+                    allOk = false;
+                    errorBuf.append("EMAIL_FAIL;");
+                }
+                if (!sendAppPush(receiverId, title, content, type, bizId)) {
+                    allOk = false;
+                    errorBuf.append("APP_FAIL;");
+                }
+                break;
+            case "SMS":
+                if (!sendSms(receiverPhone, resolveSmsTemplate(type), buildParams(title, content, receiverName))) {
+                    allOk = false;
+                    errorBuf.append("SMS_FAIL;");
+                }
+                break;
+            case "EMAIL":
+                if (!sendEmail(receiverEmail, title, content)) {
+                    allOk = false;
+                    errorBuf.append("EMAIL_FAIL;");
+                }
+                break;
+            case "APP":
+            case "SYSTEM":
+            default:
+                if (!sendAppPush(receiverId, title, content, type, bizId)) {
+                    allOk = false;
+                    errorBuf.append("APP_FAIL;");
+                }
+                break;
         }
-        SysUser user = sysUserMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException("网格员不存在");
+
+        if (allOk) {
+            log.info("[NOTIFY] 渠道 {} 发送成功，接收人：{}", channel, receiverName);
+        } else {
+            log.warn("[NOTIFY] 渠道 {} 发送存在失败，错误：{}", channel, errorBuf);
         }
+    }
 
-        String userName = user.getRealName() != null ? user.getRealName() : user.getUsername();
-        String title = "调度呼叫通知";
-        String content = "指挥中心向您发起调度呼叫，请尽快前往事件现场处置！";
-
-        sendNotification(userId, title, content, "DISPATCH_CALL", String.valueOf(userId));
-
-        if (user.getPhone() != null && !user.getPhone().isEmpty()) {
-            String smsContent = "【网格化管理】" + userName + "您好，指挥中心向您发起调度呼叫，请尽快处理！";
-            sendSms(user.getPhone(), smsContent);
+    private String resolveSmsTemplate(String type) {
+        if (type == null) return "SMS_URGE_DEFAULT";
+        switch (type) {
+            case "URGE_WARNING":
+                return "SMS_URGE_WARNING";
+            case "URGE_OVERDUE":
+                return "SMS_URGE_OVERDUE";
+            case "URGE_ESCALATED":
+                return "SMS_URGE_ESCALATE";
+            default:
+                return "SMS_URGE_DEFAULT";
         }
+    }
 
-        log.info("一键呼叫网格员完成，userId：{}，userName：{}，phone：{}", userId, userName, user.getPhone());
+    private Map<String, Object> buildParams(String title, String content, String receiverName) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("title", StrUtil.sub(title, 0, 30));
+        p.put("receiver", StrUtil.isNotBlank(receiverName) ? receiverName : "负责人");
+        return p;
     }
 }

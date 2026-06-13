@@ -1,23 +1,15 @@
 package com.gov.grid.service;
 
-import com.gov.grid.common.PageResult;
-import com.gov.grid.entity.SysNotification;
+import java.util.Map;
 
 public interface NotificationService {
 
-    void sendNotification(Long userId, String title, String content, String type, String bizId);
+    boolean sendSms(String phone, String templateCode, Map<String, Object> params);
 
-    void sendSms(String phone, String content);
+    boolean sendEmail(String to, String subject, String content);
 
-    void sendDingTalk(String userId, String content);
+    boolean sendAppPush(Long userId, String title, String content, String type, Long bizId);
 
-    void markAsRead(Long id, Long userId);
-
-    void markAllAsRead(Long userId);
-
-    Long getUnreadCount(Long userId);
-
-    PageResult<SysNotification> getNotificationList(Long userId, Integer pageNum, Integer pageSize);
-
-    void callMember(Long userId);
+    boolean sendByChannel(String channel, Long receiverId, String receiverName, String receiverPhone,
+                          String receiverEmail, String title, String content, String type, Long bizId);
 }

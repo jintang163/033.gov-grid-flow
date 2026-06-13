@@ -1,5 +1,6 @@
 package com.gov.grid.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -9,7 +10,7 @@ import com.gov.grid.entity.EventUrgeRecord;
 import com.gov.grid.entity.EventUrgeRule;
 import com.gov.grid.entity.EventUrgeTemplate;
 import com.gov.grid.entity.GridInfo;
-import com.gov.grid.entity.SysNotification;
+import com.gov.grid.entity.SysUser;
 import com.gov.grid.enums.EventPriority;
 import com.gov.grid.enums.EventStatus;
 import com.gov.grid.enums.UrgeLevelEnum;
@@ -18,11 +19,14 @@ import com.gov.grid.mapper.EventUrgeRecordMapper;
 import com.gov.grid.mapper.EventUrgeRuleMapper;
 import com.gov.grid.mapper.EventUrgeTemplateMapper;
 import com.gov.grid.mapper.GridInfoMapper;
-import com.gov.grid.mapper.SysNotificationMapper;
+import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.service.EventUrgeService;
+import com.gov.grid.service.NotificationService;
 import com.gov.grid.vo.WarningInfoVO;
+import com.gov.grid.workflow.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.task.api.Task;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,8 +50,10 @@ public class EventUrgeServiceImpl implements EventUrgeService {
     private final EventUrgeTemplateMapper eventUrgeTemplateMapper;
     private final EventUrgeRecordMapper eventUrgeRecordMapper;
     private final EventInfoMapper eventInfoMapper;
-    private final SysNotificationMapper sysNotificationMapper;
     private final GridInfoMapper gridInfoMapper;
+    private final NotificationService notificationService;
+    private final WorkflowService workflowService;
+    private final SysUserMapper sysUserMapper;
 
     @Override
     public List<EventUrgeRule> listRules() {
@@ -268,7 +274,18 @@ public class EventUrgeServiceImpl implements EventUrgeService {
                     EventUrgeTemplate template = findTemplateByUrgeLevel(newLevel);
                     String title = template != null ? renderTemplate(template.getTitleTemplate(), event, vo) : "事件催办通知";
                     String content = template != null ? renderTemplate(template.getContentTemplate(), event, vo) : "请及时处理事件";
-                    String channel = template != null ? template.getChannel() : "SYSTEM";
+                    String channel = template != null ? template.getChannel() : "APP";
+
+                    Long receiverId = getReceiverId(event);
+                    SysUser receiver = sysUserMapper.selectById(receiverId);
+                    String receiverName = receiver != null ? receiver.getRealName() : "处置员";
+                    String receiverPhone = receiver != null ? receiver.getPhone() : null;
+                    String receiverEmail = receiver != null ? receiver.getEmail() : null;
+                    String notifyType = resolveNotifyType(newLevel);
+
+                    boolean sendOk = notificationService.sendByChannel(
+                            channel, receiverId, receiverName, receiverPhone, receiverEmail,
+                            title, content, notifyType, event.getId());
 
                     EventUrgeRecord record = new EventUrgeRecord();
                     record.setEventId(event.getId());
@@ -278,21 +295,15 @@ public class EventUrgeServiceImpl implements EventUrgeService {
                     record.setTitle(title);
                     record.setContent(content);
                     record.setChannel(channel);
-                    record.setReceiverId(getReceiverId(event));
-                    record.setSendStatus(1);
+                    record.setReceiverId(receiverId);
+                    record.setReceiverName(receiverName);
+                    record.setSendStatus(sendOk ? 1 : 2);
+                    record.setErrorMsg(sendOk ? null : "渠道" + channel + "发送失败");
                     eventUrgeRecordMapper.insert(record);
 
-                    SysNotification notification = new SysNotification();
-                    notification.setUserId(getReceiverId(event));
-                    notification.setTitle(title);
-                    notification.setContent(content);
-                    notification.setType("URGE");
-                    notification.setBizId(event.getId());
-                    notification.setIsRead(0);
-                    sysNotificationMapper.insert(notification);
-
                     count++;
-                    log.info("[EventUrgeService] 事件催办，事件ID：{}，催办级别：{}", event.getId(), newLevel);
+                    log.info("[EventUrgeService] 事件催办，事件ID：{}，催办级别：{}，渠道：{}，发送：{}",
+                            event.getId(), newLevel, channel, sendOk ? "成功" : "失败");
                 }
             } catch (Exception e) {
                 log.error("[EventUrgeService] 扫描催办异常，事件ID：{}", event.getId(), e);
@@ -309,13 +320,44 @@ public class EventUrgeServiceImpl implements EventUrgeService {
         event.setPriority(EventPriority.URGENT.getCode());
         eventInfoMapper.updateById(event);
 
+        Long superiorReceiverId = getSuperiorReceiverId(event);
+        boolean reassignOk = false;
+        try {
+            if (StrUtil.isNotBlank(event.getProcessInstanceId())) {
+                List<Task> tasks = workflowService.getTaskList(null, event.getProcessInstanceId());
+                if (CollUtil.isNotEmpty(tasks)) {
+                    String taskId = tasks.get(0).getId();
+                    String newAssigneeId = String.valueOf(superiorReceiverId);
+                    try {
+                        workflowService.assignTask(taskId, newAssigneeId);
+                        reassignOk = true;
+                        log.info("[EventUrgeService] 督办升级：流程任务改派成功，事件ID：{}，任务ID：{}，新assignee：{}",
+                                event.getId(), taskId, newAssigneeId);
+                    } catch (Exception assignEx) {
+                        log.warn("[EventUrgeService] 督办升级：流程任务改派失败，事件ID：{}，错误：{}",
+                                event.getId(), assignEx.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("[EventUrgeService] 督办升级：改派流程异常，事件ID：{}", event.getId(), e);
+        }
+
         WarningInfoVO vo = getWarningInfo(event);
         EventUrgeTemplate template = findTemplateByUrgeLevel(3);
         String title = template != null ? renderTemplate(template.getTitleTemplate(), event, vo) : "升级督办通知";
-        String content = template != null ? renderTemplate(template.getContentTemplate(), event, vo) : "事件已升级督办，请上级关注处理";
-        String channel = template != null ? template.getChannel() : "SYSTEM";
+        String content = template != null ? renderTemplate(template.getContentTemplate(), event, vo)
+                : "事件已升级督办，请上级关注处理" + (reassignOk ? "，流程任务已改派" : "");
+        String channel = template != null ? template.getChannel() : "ALL";
 
-        Long receiverId = getSuperiorReceiverId(event);
+        SysUser receiver = sysUserMapper.selectById(superiorReceiverId);
+        String receiverName = receiver != null ? receiver.getRealName() : "上级负责人";
+        String receiverPhone = receiver != null ? receiver.getPhone() : null;
+        String receiverEmail = receiver != null ? receiver.getEmail() : null;
+
+        boolean sendOk = notificationService.sendByChannel(
+                channel, superiorReceiverId, receiverName, receiverPhone, receiverEmail,
+                title, content, "URGE_ESCALATED", event.getId());
 
         EventUrgeRecord record = new EventUrgeRecord();
         record.setEventId(event.getId());
@@ -325,20 +367,14 @@ public class EventUrgeServiceImpl implements EventUrgeService {
         record.setTitle(title);
         record.setContent(content);
         record.setChannel(channel);
-        record.setReceiverId(receiverId);
-        record.setSendStatus(1);
+        record.setReceiverId(superiorReceiverId);
+        record.setReceiverName(receiverName);
+        record.setSendStatus(sendOk ? 1 : 2);
+        record.setErrorMsg(sendOk ? null : "督办升级通知发送失败");
         eventUrgeRecordMapper.insert(record);
 
-        SysNotification notification = new SysNotification();
-        notification.setUserId(receiverId);
-        notification.setTitle(title);
-        notification.setContent(content);
-        notification.setType("URGE");
-        notification.setBizId(event.getId());
-        notification.setIsRead(0);
-        sysNotificationMapper.insert(notification);
-
-        log.info("[EventUrgeService] 事件升级督办，事件ID：{}", event.getId());
+        log.info("[EventUrgeService] 事件升级督办，事件ID：{}，接收人：{}，渠道：{}，改派：{}，通知：{}",
+                event.getId(), receiverName, channel, reassignOk ? "成功" : "未执行", sendOk ? "成功" : "失败");
         return true;
     }
 
@@ -373,6 +409,12 @@ public class EventUrgeServiceImpl implements EventUrgeService {
         } else {
             result = StrUtil.replace(result, "${deadline}", "");
         }
+        if (vo != null && vo.getRemainingHours() != null) {
+            result = StrUtil.replace(result, "${remainingHours}",
+                    String.format("%.1f", Math.abs(vo.getRemainingHours())));
+        } else {
+            result = StrUtil.replace(result, "${remainingHours}", "");
+        }
         return result;
     }
 
@@ -400,5 +442,18 @@ public class EventUrgeServiceImpl implements EventUrgeService {
             }
         }
         return DEFAULT_RECEIVER_ID;
+    }
+
+    private String resolveNotifyType(int urgeLevel) {
+        switch (urgeLevel) {
+            case 1:
+                return "URGE_WARNING";
+            case 2:
+                return "URGE_OVERDUE";
+            case 3:
+                return "URGE_ESCALATED";
+            default:
+                return "URGE";
+        }
     }
 }
