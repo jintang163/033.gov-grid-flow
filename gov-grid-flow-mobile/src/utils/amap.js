@@ -1,4 +1,4 @@
-import AMapLoader from 'amap-js-api-loader'
+import AMapLoader from '@amap/amap-jsapi-loader'
 
 let aMapInstance = null
 

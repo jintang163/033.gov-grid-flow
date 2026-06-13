@@ -14,7 +14,7 @@
     "pinia": "^2.1.7",
     "vant": "^4.8.0",
     "axios": "^1.6.0",
-    "amap-js-api-loader": "^1.0.0"
+    "@amap/amap-jsapi-loader": "^1.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

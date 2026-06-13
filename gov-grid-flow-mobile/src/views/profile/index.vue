@@ -42,6 +42,32 @@
       </van-cell-group>
 
       <van-cell-group inset style="margin-top: 12px">
+        <van-cell title="离线事件同步" icon="exchange" @click="onManualSync">
+          <template #right-icon>
+            <span v-if="offlineStore.syncing" class="sync-status syncing">
+              <van-loading size="16px" /> 同步中
+            </span>
+            <span v-else-if="offlineStore.pendingCount > 0" class="sync-status pending">
+              {{ offlineStore.pendingCount }}条待同步
+            </span>
+            <span v-else class="sync-status synced">
+              已同步
+            </span>
+          </template>
+        </van-cell>
+        <van-cell title="已同步缓存" icon="description" is-link @click="onClearSynced">
+          <template #right-icon>
+            <span class="cell-count success">{{ offlineStore.stats.synced }}条</span>
+          </template>
+        </van-cell>
+        <van-cell title="网络状态" icon="wifi">
+          <template #right-icon>
+            <span :class="offlineStore.isOnline ? 'net-online' : 'net-offline'">
+              <i :class="['dot', offlineStore.isOnline ? 'online' : 'offline']"></i>
+              {{ offlineStore.isOnline ? '在线' : '离线' }}
+            </span>
+          </template>
+        </van-cell>
         <van-cell title="修改密码" icon="lock" is-link @click="goChangePassword" />
       </van-cell-group>
 
@@ -96,13 +122,50 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
-import { useUserStore } from '@/store'
+import { useUserStore, useOfflineStore } from '@/store'
 import { getMyTodo, getMyReport, getMyDone, changePassword } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
+const offlineStore = useOfflineStore()
 const active = ref(3)
 const showPasswordDialog = ref(false)
+
+let deviceId = localStorage.getItem('device_id')
+if (!deviceId) {
+  deviceId = 'web_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+  localStorage.setItem('device_id', deviceId)
+}
+
+const onManualSync = async () => {
+  if (!offlineStore.isOnline) {
+    showToast('当前网络不可用，无法同步')
+    return
+  }
+  try {
+    const result = await offlineStore.processQueue(userStore.userId, deviceId)
+    if (result) {
+      showToast(
+        `同步完成：成功${result.successCount}条，失败${result.failedCount}条`
+      )
+    }
+  } catch (e) {
+    showToast('同步失败：' + (e.message || '未知错误'))
+  }
+}
+
+const onClearSynced = async () => {
+  try {
+    await showConfirmDialog({
+      title: '提示',
+      message: `确定清除 ${offlineStore.stats.synced} 条已同步的本地缓存吗？`,
+      confirmButtonText: '清除',
+      cancelButtonText: '取消'
+    })
+    offlineStore.clearSynced()
+    showToast({ type: 'success', message: '已清除缓存' })
+  } catch {}
+}
 
 const passwordForm = reactive({
   oldPassword: '',
@@ -200,6 +263,7 @@ const handleLogout = async () => {
 }
 
 onMounted(() => {
+  offlineStore.refresh()
   fetchCounts()
 })
 </script>
@@ -291,5 +355,59 @@ onMounted(() => {
 
 :deep(.van-field__label) {
   width: 90px;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  margin-right: 4px;
+
+  &.syncing {
+    color: #1989fa;
+  }
+
+  &.pending {
+    color: #ff976a;
+    font-weight: 500;
+  }
+
+  &.synced {
+    color: #07c160;
+  }
+}
+
+.net-online,
+.net-offline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-right: 4px;
+
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+
+    &.online {
+      background: #07c160;
+      box-shadow: 0 0 4px #07c160;
+    }
+
+    &.offline {
+      background: #969799;
+    }
+  }
+}
+
+.net-online {
+  color: #07c160;
+}
+
+.net-offline {
+  color: #969799;
 }
 </style>

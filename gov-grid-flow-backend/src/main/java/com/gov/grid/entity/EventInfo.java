@@ -15,6 +15,9 @@ public class EventInfo extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
+    @TableField("client_id")
+    private String clientId;
+
     @TableField("event_no")
     private String eventNo;
 
@@ -68,4 +71,7 @@ public class EventInfo extends BaseEntity {
 
     @TableField("process_instance_id")
     private String processInstanceId;
+
+    @TableField("event_timestamp")
+    private java.time.LocalDateTime eventTimestamp;
 }

@@ -19,20 +19,38 @@ public enum EventPriority {
     }
 
     public static EventPriority fromCode(String code) {
-        for (EventPriority priority : values()) {
-            if (priority.code.equals(code)) {
-                return priority;
-            }
+        if (code == null) {
+            return NORMAL;
         }
-        throw new IllegalArgumentException("未知事件优先级: " + code);
+        String normalized = code.trim().toUpperCase();
+        switch (normalized) {
+            case "LOW":
+            case "LOW_PRIORITY":
+                return LOW;
+            case "MEDIUM":
+            case "NORMAL":
+                return NORMAL;
+            case "HIGH":
+            case "HIGH_PRIORITY":
+                return HIGH;
+            case "URGENT":
+            case "CRITICAL":
+                return URGENT;
+            default:
+                for (EventPriority priority : values()) {
+                    if (priority.code.equalsIgnoreCase(code)) {
+                        return priority;
+                    }
+                }
+                return NORMAL;
+        }
+    }
+
+    public static String normalize(String code) {
+        return fromCode(code).getCode();
     }
 
     public static String getNameByCode(String code) {
-        for (EventPriority priority : values()) {
-            if (priority.code.equals(code)) {
-                return priority.name;
-            }
-        }
-        return code;
+        return fromCode(code).getName();
     }
 }

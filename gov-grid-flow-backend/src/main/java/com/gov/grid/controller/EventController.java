@@ -2,6 +2,8 @@ package com.gov.grid.controller;
 
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.Result;
+import com.gov.grid.dto.BatchSyncRequestDTO;
+import com.gov.grid.dto.BatchSyncResponseDTO;
 import com.gov.grid.dto.EventProcessDTO;
 import com.gov.grid.dto.EventQueryDTO;
 import com.gov.grid.dto.EventReportDTO;
@@ -37,8 +39,27 @@ public class EventController {
     @PostMapping("/report")
     public Result<EventInfo> reportEvent(@Validated @RequestBody EventReportDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
-        EventInfo eventInfo = eventService.reportEvent(dto, userId);
+        boolean async = request.getHeader("X-Async") != null && "true".equalsIgnoreCase(request.getHeader("X-Async"));
+        EventInfo eventInfo = eventService.reportEvent(dto, userId, async);
         return Result.success("事件上报成功", eventInfo);
+    }
+
+    @ApiOperation("批量同步上报（离线数据同步）")
+    @PostMapping("/batch-sync")
+    public Result<BatchSyncResponseDTO> batchSync(@Validated @RequestBody BatchSyncRequestDTO dto,
+                                                  HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        boolean async = request.getHeader("X-Async") != null && "true".equalsIgnoreCase(request.getHeader("X-Async"));
+
+        BatchSyncResponseDTO response;
+        if (async) {
+            response = eventService.processBatchAsync(dto.getEvents(), userId, dto.getDeviceId());
+        } else {
+            response = eventService.processBatch(dto.getEvents(), userId);
+        }
+
+        String message = response.getMessage() != null ? response.getMessage() : "批量同步完成";
+        return Result.success(message, response);
     }
 
     @ApiOperation("匿名上报事件（居民）")
@@ -61,6 +82,16 @@ public class EventController {
     public Result<EventDetailVO> getEventDetail(@PathVariable Long id) {
         EventDetailVO detail = eventService.getEventDetail(id);
         return Result.success(detail);
+    }
+
+    @ApiOperation("根据clientId查询事件（幂等查询）")
+    @GetMapping("/client/{clientId}")
+    public Result<EventInfo> getEventByClientId(@PathVariable String clientId) {
+        EventInfo eventInfo = eventService.findByClientId(clientId);
+        if (eventInfo == null) {
+            return Result.success("事件不存在", null);
+        }
+        return Result.success(eventInfo);
     }
 
     @ApiOperation("我的待办")

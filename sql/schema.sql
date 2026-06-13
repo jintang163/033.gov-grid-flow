@@ -102,6 +102,7 @@ CREATE TABLE `grid_member` (
 DROP TABLE IF EXISTS `event_info`;
 CREATE TABLE `event_info` (
   `id`                  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `client_id`           varchar(64)  DEFAULT NULL COMMENT '客户端生成ID，用于离线同步幂等去重',
   `event_no`            varchar(50)  NOT NULL COMMENT '事件编号',
   `title`               varchar(200) NOT NULL COMMENT '事件标题',
   `event_type`          varchar(50)  NOT NULL COMMENT '事件类型',
@@ -119,18 +120,21 @@ CREATE TABLE `event_info` (
   `grid_id`             bigint(20)   DEFAULT NULL COMMENT '所属网格ID',
   `status`              varchar(30)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-待受理 APPROVED-已受理 DISPATCHED-已分派 HANDLED-已处置 COMPLETED-已办结 REJECTED-已驳回',
   `priority`            varchar(30)  NOT NULL DEFAULT 'NORMAL' COMMENT '优先级：LOW-低 NORMAL-中 HIGH-高 URGENT-紧急',
+  `event_timestamp`     datetime     DEFAULT NULL COMMENT '客户端上报时间戳（离线同步时排序用）',
   `process_instance_id` varchar(64)  DEFAULT NULL COMMENT 'Flowable流程实例ID',
   `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted`             tinyint(4)   NOT NULL DEFAULT 0 COMMENT '逻辑删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_event_no` (`event_no`),
+  UNIQUE KEY `uk_client_id` (`client_id`),
   KEY `idx_grid_id` (`grid_id`),
   KEY `idx_reporter_id` (`reporter_id`),
   KEY `idx_status` (`status`),
   KEY `idx_priority` (`priority`),
   KEY `idx_event_type` (`event_type`),
   KEY `idx_created_at` (`created_at`),
+  KEY `idx_event_timestamp` (`event_timestamp`),
   KEY `idx_process_instance_id` (`process_instance_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件表';
 

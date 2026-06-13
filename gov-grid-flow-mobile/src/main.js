@@ -25,7 +25,7 @@ import {
   Tag,
   Popup,
   Picker,
-  DatetimePicker,
+  DatePicker,
   Uploader,
   ActionSheet,
   Steps,
@@ -71,7 +71,7 @@ app.use(Card)
 app.use(Tag)
 app.use(Popup)
 app.use(Picker)
-app.use(DatetimePicker)
+app.use(DatePicker)
 app.use(Uploader)
 app.use(ActionSheet)
 app.use(Steps)

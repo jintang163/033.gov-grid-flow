@@ -1,6 +1,19 @@
 <template>
   <div class="report-container">
-    <van-nav-bar title="事件上报" left-arrow fixed placeholder @click-left="onBack" />
+    <van-nav-bar title="事件上报" left-arrow fixed placeholder @click-left="onBack">
+      <template #right>
+        <div class="nav-right">
+          <span
+            v-if="offlineStore.isOnline"
+            class="status-dot online"
+          ></span>
+          <span v-else class="status-dot offline"></span>
+          <span v-if="offlineStore.pendingCount > 0" class="pending-badge" @click="onManualSync">
+            {{ offlineStore.pendingCount }}待同步
+          </span>
+        </div>
+      </template>
+    </van-nav-bar>
 
     <div class="report-content">
       <van-form ref="formRef" @submit="onSubmit">
@@ -234,7 +247,32 @@
 
         <div class="submit-btn-wrap">
           <van-button round block type="primary" size="large" native-type="submit" :loading="submitting">
-            提交上报
+            {{ offlineStore.isOnline ? '提交上报' : '暂存并上报（离线）' }}
+          </van-button>
+          <van-button
+            round
+            block
+            plain
+            type="warning"
+            size="large"
+            style="margin-top: 12px"
+            @click="onSaveOffline"
+            :disabled="submitting"
+          >
+            <van-icon name="down" />保存到本地（离线）
+          </van-button>
+          <van-button
+            v-if="offlineStore.pendingCount > 0"
+            round
+            block
+            plain
+            type="success"
+            size="large"
+            style="margin-top: 12px"
+            @click="onManualSync"
+            :loading="offlineStore.syncing"
+          >
+            <van-icon name="exchange" />立即同步（{{ offlineStore.pendingCount }}条待同步）
           </van-button>
           <van-button
             round
@@ -293,11 +331,27 @@ import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice } from '@/api'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
+import { useOfflineStore, useUserStore } from '@/store'
+import { generateClientId } from '@/utils/offlineDB'
 
 const router = useRouter()
+const offlineStore = useOfflineStore()
+const userStore = useUserStore()
 const active = ref(1)
 const formRef = ref(null)
 const submitting = ref(false)
+
+let deviceId = localStorage.getItem('device_id')
+if (!deviceId) {
+  deviceId = 'web_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+  localStorage.setItem('device_id', deviceId)
+}
+
+onMounted(() => {
+  offlineStore.refresh()
+  fetchEventTypeList()
+  fetchGridList()
+})
 const showTypePicker = ref(false)
 const showPriorityPicker = ref(false)
 const showGridPicker = ref(false)
@@ -363,11 +417,6 @@ const priorityColumns = [
   { text: '特急', value: 'URGENT' },
   { text: '低', value: 'LOW' }
 ]
-
-onMounted(() => {
-  fetchEventTypeList()
-  fetchGridList()
-})
 
 onUnmounted(() => {
   if (recordingTimer) {
@@ -742,6 +791,76 @@ const onReset = () => {
   formRef.value && formRef.value.resetValidation()
 }
 
+const buildSubmitData = (withClientId = true) => {
+  const submitData = {
+    title: form.title,
+    eventType: form.eventType,
+    type: form.eventType,
+    description: form.description,
+    lng: form.lng,
+    lat: form.lat,
+    longitude: form.lng,
+    latitude: form.lat,
+    address: form.address,
+    images: uploadedImages.value,
+    imageUrls: uploadedImages.value,
+    videos: uploadedVideos.value,
+    voiceUrl: voiceUrl.value,
+    anonymous: form.anonymous,
+    priority: form.priority,
+    gridId: form.gridId,
+    eventTimestamp: Date.now()
+  }
+
+  if (withClientId) {
+    submitData.clientId = generateClientId()
+  }
+
+  if (form.anonymous === 0) {
+    submitData.reporterName = form.reporterName
+    submitData.reporterPhone = form.reporterPhone
+    submitData.reporterId = userStore.userId || ''
+  }
+
+  return submitData
+}
+
+const onSaveOffline = async () => {
+  try {
+    if (!form.title || !form.eventType || !form.description) {
+      showToast('请填写完整的事件信息再暂存')
+      return
+    }
+    const eventData = buildSubmitData(true)
+    offlineStore.saveEvent(eventData)
+    showToast({ type: 'success', message: '已暂存到本地，联网后自动同步' })
+    setTimeout(() => {
+      router.back()
+    }, 1200)
+  } catch (e) {
+    console.error(e)
+    showToast('暂存失败：' + (e.message || '未知错误'))
+  }
+}
+
+const onManualSync = async () => {
+  try {
+    if (!offlineStore.isOnline) {
+      showToast('当前网络不可用，无法同步')
+      return
+    }
+    const result = await offlineStore.processQueue(userStore.userId, deviceId)
+    if (result) {
+      showToast(
+        `同步完成：成功${result.successCount}条，失败${result.failedCount}条`
+      )
+    }
+  } catch (e) {
+    console.error(e)
+    showToast('同步失败：' + (e.message || '未知错误'))
+  }
+}
+
 const onSubmit = async () => {
   try {
     submitting.value = true
@@ -751,24 +870,16 @@ const onSubmit = async () => {
       uploadedVoiceUrl = await uploadVoiceFile()
     }
 
-    const submitData = {
-      title: form.title,
-      eventType: form.eventType,
-      description: form.description,
-      lng: form.lng,
-      lat: form.lat,
-      address: form.address,
-      images: uploadedImages.value,
-      videos: uploadedVideos.value,
-      voiceUrl: uploadedVoiceUrl,
-      anonymous: form.anonymous,
-      priority: form.priority,
-      gridId: form.gridId
-    }
+    const submitData = buildSubmitData(true)
+    submitData.voiceUrl = uploadedVoiceUrl
 
-    if (form.anonymous === 0) {
-      submitData.reporterName = form.reporterName
-      submitData.reporterPhone = form.reporterPhone
+    if (!offlineStore.isOnline) {
+      offlineStore.saveEvent(submitData)
+      showToast({ type: 'success', message: '网络不可用，已暂存到本地' })
+      setTimeout(() => {
+        router.back()
+      }, 1500)
+      return
     }
 
     let res
@@ -778,13 +889,20 @@ const onSubmit = async () => {
       res = await reportEvent(submitData)
     }
 
+    offlineStore.saveEvent({ ...submitData, status: 'synced', serverId: res?.data?.id, syncedAt: Date.now() })
     showToast({ type: 'success', message: '上报成功' })
     setTimeout(() => {
       router.back()
     }, 1500)
   } catch (e) {
     console.error(e)
-    showToast(e.message || '上报失败，请重试')
+    try {
+      const fallbackData = buildSubmitData(true)
+      offlineStore.saveEvent({ ...fallbackData, status: 'failed', lastError: e.message || '上报失败' })
+      showToast(e.message || '上报失败，已暂存本地稍后重试')
+    } catch (saveErr) {
+      showToast(e.message || '上报失败，请重试')
+    }
   } finally {
     submitting.value = false
   }
@@ -796,6 +914,37 @@ const onSubmit = async () => {
   min-height: 100vh;
   background-color: #f7f8fa;
   padding-bottom: 40px;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+
+    &.online {
+      background-color: #07c160;
+      box-shadow: 0 0 4px #07c160;
+    }
+
+    &.offline {
+      background-color: #969799;
+    }
+  }
+
+  .pending-badge {
+    font-size: 12px;
+    color: #ee0a24;
+    background-color: #ffeae8;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
 }
 
 .report-content {

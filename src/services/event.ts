@@ -5,37 +5,100 @@ import type { BatchSyncRequest, BatchSyncResponse } from '@/types/sync';
 const BASE_URL = 'http://localhost:8080/api';
 
 export interface ReportEventRequest {
-  type: EventType;
+  clientId?: string;
+  eventTimestamp?: number;
+  eventType: EventType;
+  type?: EventType;
   title: string;
   description: string;
   priority: EventPriority;
-  imageUrls: string[];
-  longitude: number;
-  latitude: number;
+  images?: string[];
+  imageUrls?: string[];
+  lng?: number;
+  lat?: number;
+  longitude?: number;
+  latitude?: number;
   address: string;
   anonymous: number;
-  clientId?: string;
-  timestamp?: number;
+  reporterId?: string | number;
+  reporterName?: string;
+  reporterPhone?: string;
+  gridId?: number;
+  voiceUrl?: string;
+  videos?: string[];
 }
 
 export interface ReportEventResponse {
   id: number;
   clientId?: string;
+  eventNo?: string;
   status: string;
   message: string;
 }
 
+const normalizePriority = (p: string): string => {
+  if (!p) return 'NORMAL';
+  const map: Record<string, string> = {
+    low: 'LOW',
+    medium: 'NORMAL',
+    normal: 'NORMAL',
+    high: 'HIGH',
+    urgent: 'URGENT'
+  };
+  return map[p.toLowerCase()] || 'NORMAL';
+};
+
+const toBackendPayload = (req: ReportEventRequest): Record<string, any> => {
+  const payload: Record<string, any> = {
+    clientId: req.clientId,
+    eventTimestamp: req.eventTimestamp,
+    eventType: req.eventType || req.type,
+    title: req.title,
+    description: req.description,
+    priority: normalizePriority(req.priority),
+    address: req.address,
+    anonymous: req.anonymous,
+    reporterId: req.reporterId,
+    reporterName: req.reporterName,
+    reporterPhone: req.reporterPhone,
+    gridId: req.gridId,
+    voiceUrl: req.voiceUrl,
+    videos: req.videos
+  };
+
+  const resolvedImages = req.images && req.images.length > 0 ? req.images : req.imageUrls;
+  if (resolvedImages && resolvedImages.length > 0) {
+    payload.images = resolvedImages;
+    payload.imageUrls = resolvedImages;
+  }
+
+  if (req.lng !== undefined) {
+    payload.lng = req.lng;
+    payload.longitude = req.lng;
+  } else if (req.longitude !== undefined) {
+    payload.lng = req.longitude;
+    payload.longitude = req.longitude;
+  }
+
+  if (req.lat !== undefined) {
+    payload.lat = req.lat;
+    payload.latitude = req.lat;
+  } else if (req.latitude !== undefined) {
+    payload.lat = req.latitude;
+    payload.latitude = req.latitude;
+  }
+
+  return payload;
+};
+
 export const reportEvent = async (data: ReportEventRequest): Promise<ReportEventResponse> => {
   console.log('[EventService] 上报事件:', data);
   try {
+    const payload = toBackendPayload(data);
     const response = await Taro.request({
       url: `${BASE_URL}/event/report`,
       method: 'POST',
-      data: {
-        ...data,
-        clientId: data.clientId,
-        eventTimestamp: data.timestamp
-      },
+      data: payload,
       header: {
         'Content-Type': 'application/json',
         'X-User-Id': '1'
@@ -48,6 +111,7 @@ export const reportEvent = async (data: ReportEventRequest): Promise<ReportEvent
       return {
         id: response.data.data?.id || 0,
         clientId: data.clientId,
+        eventNo: response.data.data?.eventNo,
         status: 'success',
         message: response.data.message || '上报成功'
       };
@@ -92,15 +156,33 @@ export const uploadImage = async (filePath: string): Promise<string> => {
 export const batchSyncEvents = async (events: OfflineEvent[]): Promise<BatchSyncResponse> => {
   console.log('[EventService] 批量同步事件，数量:', events.length);
 
-  const request: BatchSyncRequest = {
-    events: events.map(e => ({
-      ...e,
-      images: e.images.map(img => ({
-        ...img,
-        localPath: img.localPath,
-        remoteUrl: img.remoteUrl || ''
-      }))
-    })),
+  const backendEvents: ReportEventRequest[] = events.map(e => {
+    const imageUrls = e.images
+      .map(img => img.remoteUrl || img.localPath)
+      .filter(url => url && url.length > 0);
+
+    return {
+      clientId: e.clientId,
+      eventTimestamp: e.createdAt,
+      eventType: e.type,
+      title: e.title,
+      description: e.description,
+      priority: e.priority,
+      imageUrls,
+      images: imageUrls,
+      longitude: e.location?.longitude,
+      latitude: e.location?.latitude,
+      lng: e.location?.longitude,
+      lat: e.location?.latitude,
+      address: e.location?.address,
+      anonymous: e.anonymous,
+      reporterId: e.reporterId,
+      reporterName: e.reporterName
+    };
+  });
+
+  const requestData = {
+    events: backendEvents.map(e => toBackendPayload(e)),
     timestamp: Date.now(),
     deviceId: 'mobile-device-001'
   };
@@ -109,7 +191,7 @@ export const batchSyncEvents = async (events: OfflineEvent[]): Promise<BatchSync
     const response = await Taro.request({
       url: `${BASE_URL}/event/batch-sync`,
       method: 'POST',
-      data: request,
+      data: requestData,
       header: {
         'Content-Type': 'application/json',
         'X-User-Id': '1'
@@ -119,13 +201,47 @@ export const batchSyncEvents = async (events: OfflineEvent[]): Promise<BatchSync
 
     if (response.statusCode === 200 && response.data.success) {
       console.log('[EventService] 批量同步成功:', response.data);
-      return response.data as BatchSyncResponse;
+      const raw = response.data.data || response.data;
+      const results = raw.results || [];
+      return {
+        success: raw.success !== false,
+        message: raw.message || '批量同步完成',
+        results: results.map((r: any) => ({
+          clientId: r.clientId,
+          serverId: r.serverId,
+          success: r.success !== false,
+          error: r.error
+        }))
+      };
     }
 
     throw new Error(response.data?.message || '批量同步失败');
   } catch (error) {
     console.error('[EventService] 批量同步失败:', error);
     throw error;
+  }
+};
+
+export const syncAll = batchSyncEvents;
+
+export const getEventByClientId = async (clientId: string): Promise<any> => {
+  console.log('[EventService] 根据clientId查询事件:', clientId);
+  try {
+    const response = await Taro.request({
+      url: `${BASE_URL}/event/client/${clientId}`,
+      method: 'GET',
+      header: {
+        'X-User-Id': '1'
+      }
+    });
+
+    if (response.statusCode === 200 && response.data.success) {
+      return response.data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('[EventService] clientId查询失败:', error);
+    return null;
   }
 };
 

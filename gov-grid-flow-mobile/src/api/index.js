@@ -265,3 +265,11 @@ export const getComparisonHistory = (eventId) => {
     method: 'get'
   })
 }
+
+export const batchSyncEvents = (data) => {
+  return request({
+    url: '/event/batch-sync',
+    method: 'post',
+    data
+  })
+}
