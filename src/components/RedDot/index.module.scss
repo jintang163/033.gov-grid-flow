@@ -1,0 +1,69 @@
+@use '@/styles/variables.scss' as *;
+
+.redDot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: $color-red-dot;
+  border-radius: $radius-round;
+  min-width: 16rpx;
+  min-height: 16rpx;
+
+  &.small {
+    &.withoutNumber {
+      width: 12rpx;
+      height: 12rpx;
+    }
+
+    &.withNumber {
+      min-width: 28rpx;
+      height: 28rpx;
+      padding: 0 8rpx;
+
+      .count {
+        font-size: 18rpx;
+      }
+    }
+  }
+
+  &.medium {
+    &.withoutNumber {
+      width: 16rpx;
+      height: 16rpx;
+    }
+
+    &.withNumber {
+      min-width: 36rpx;
+      height: 36rpx;
+      padding: 0 10rpx;
+
+      .count {
+        font-size: 22rpx;
+      }
+    }
+  }
+
+  &.large {
+    &.withoutNumber {
+      width: 20rpx;
+      height: 20rpx;
+    }
+
+    &.withNumber {
+      min-width: 44rpx;
+      height: 44rpx;
+      padding: 0 12rpx;
+
+      .count {
+        font-size: 26rpx;
+      }
+    }
+  }
+}
+
+.count {
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+}

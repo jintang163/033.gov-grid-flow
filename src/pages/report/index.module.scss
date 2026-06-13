@@ -1,0 +1,353 @@
+@use '@/styles/variables.scss' as *;
+
+.reportPage {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding-bottom: 200rpx;
+}
+
+.offlineNotice {
+  background-color: rgba(255, 125, 0, 0.1);
+  padding: $spacing-md $page-padding;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.offlineIcon {
+  font-size: 32rpx;
+}
+
+.offlineText {
+  font-size: $font-size-sm;
+  color: $color-warning;
+  font-weight: $font-weight-medium;
+}
+
+.formContainer {
+  padding: $spacing-md $page-padding;
+}
+
+.formSection {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.sectionLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+
+  .required {
+    color: $color-error;
+    margin-right: 4rpx;
+  }
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.typeItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-md $spacing-sm;
+  border-radius: $radius-md;
+  border: 2rpx solid transparent;
+  background-color: $color-bg-hover;
+  transition: all $transition-base;
+
+  &.active {
+    border-color: $color-primary;
+    background-color: rgba(22, 93, 255, 0.05);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.typeIcon {
+  font-size: 48rpx;
+  margin-bottom: $spacing-xs;
+}
+
+.typeName {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  text-align: center;
+  @include text-ellipsis;
+
+  .active & {
+    color: $color-primary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.inputWrapper {
+  margin-bottom: $spacing-lg;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.inputLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+
+  .required {
+    color: $color-error;
+    margin-right: 4rpx;
+  }
+}
+
+.textInput {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 $spacing-md;
+  background-color: $color-bg-hover;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &:focus {
+    border-color: $color-primary;
+    background-color: $color-bg-card;
+  }
+}
+
+.textareaInput {
+  width: 100%;
+  min-height: 200rpx;
+  padding: $spacing-md;
+  background-color: $color-bg-hover;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.6;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &:focus {
+    border-color: $color-primary;
+    background-color: $color-bg-card;
+  }
+}
+
+.wordCount {
+  text-align: right;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.priorityRow {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.priorityItem {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  border-radius: $radius-md;
+  background-color: $color-bg-hover;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    &.low {
+      border-color: $color-text-tertiary;
+      background-color: rgba(134, 144, 156, 0.1);
+    }
+    &.medium {
+      border-color: $color-primary;
+      background-color: rgba(22, 93, 255, 0.1);
+    }
+    &.high {
+      border-color: $color-warning;
+      background-color: rgba(255, 125, 0, 0.1);
+    }
+    &.urgent {
+      border-color: $color-error;
+      background-color: rgba(245, 63, 63, 0.1);
+    }
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.priorityText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+
+  .active.low & { color: $color-text-tertiary; }
+  .active.medium & { color: $color-primary; }
+  .active.high & { color: $color-warning; }
+  .active.urgent & { color: $color-error; }
+}
+
+.locationRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md;
+  background-color: $color-bg-hover;
+  border-radius: $radius-md;
+  gap: $spacing-md;
+}
+
+.locationIcon {
+  font-size: 36rpx;
+  flex-shrink: 0;
+}
+
+.locationInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.locationAddress {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.locationCoords {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.locationBtn {
+  flex-shrink: 0;
+  padding: $spacing-sm $spacing-md;
+  background-color: $color-primary;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.96);
+  }
+}
+
+.locationBtnText {
+  font-size: $font-size-sm;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-md});
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-lg;
+}
+
+.anonymousRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.anonymousCheckbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-xs;
+  border: 2rpx solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+
+  &.checked {
+    background-color: $color-primary;
+    border-color: $color-primary;
+  }
+}
+
+.checkmark {
+  color: $color-text-white;
+  font-size: 24rpx;
+  font-weight: $font-weight-bold;
+}
+
+.anonymousText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.submitBtn {
+  flex: 1;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+
+  &.disabled {
+    background: $color-text-disabled;
+  }
+
+  &:active:not(.disabled) {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.submitBtnText {
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+
+  .disabled & {
+    color: $color-text-white;
+    opacity: 0.8;
+  }
+}
+
+.loadingText {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  .loadingIcon {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

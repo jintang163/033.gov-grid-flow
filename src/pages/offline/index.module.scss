@@ -1,0 +1,252 @@
+@use '@/styles/variables.scss' as *;
+
+.offlinePage {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding-bottom: 180rpx;
+}
+
+.filterBar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: $color-bg-page;
+  padding: $spacing-md $page-padding;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.filterTabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.filterTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64rpx;
+  border-radius: $radius-button;
+  background-color: $color-bg-card;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background-color: rgba(22, 93, 255, 0.1);
+    border-color: $color-primary;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.filterTabText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+
+  .active & {
+    color: $color-primary;
+  }
+}
+
+.filterTabCount {
+  margin-left: 8rpx;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-round;
+  background-color: $color-bg-hover;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+
+  .active & {
+    background-color: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.actionBar {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.actionBtn {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.primaryAction {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+}
+
+.secondaryAction {
+  background-color: $color-bg-card;
+  border: 2rpx solid $color-border;
+}
+
+.dangerAction {
+  background-color: rgba(245, 63, 63, 0.1);
+  border: 2rpx solid rgba(245, 63, 63, 0.3);
+}
+
+.actionBtnText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.primaryAction .actionBtnText {
+  color: $color-text-white;
+}
+
+.secondaryAction .actionBtnText {
+  color: $color-text-primary;
+}
+
+.dangerAction .actionBtnText {
+  color: $color-error;
+}
+
+.eventList {
+  padding: $spacing-md $page-padding;
+}
+
+.syncProgressSection {
+  margin: 0 $page-padding $spacing-md;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 3 $spacing-lg;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  margin-bottom: $spacing-lg;
+}
+
+.emptyTitle {
+  font-size: $font-size-lg;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-sm;
+}
+
+.emptyDesc {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  text-align: center;
+}
+
+.fixedBottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + $spacing-md;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.batchSelectBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selectAll {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-xs;
+  border: 2rpx solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.checked {
+    background-color: $color-primary;
+    border-color: $color-primary;
+  }
+}
+
+.checkmark {
+  color: $color-text-white;
+  font-size: 24rpx;
+  font-weight: $font-weight-bold;
+}
+
+.selectAllText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.selectedCount {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.batchActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+}
+
+.batchBtn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.batchSyncBtn {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+}
+
+.batchDeleteBtn {
+  background-color: rgba(245, 63, 63, 0.1);
+  border: 2rpx solid rgba(245, 63, 63, 0.3);
+}
+
+.batchBtnText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.batchSyncBtn .batchBtnText {
+  color: $color-text-white;
+}
+
+.batchDeleteBtn .batchBtnText {
+  color: $color-error;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

@@ -1,0 +1,243 @@
+@use '@/styles/variables.scss' as *;
+
+.homePage {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f0f5ff 0%, $color-bg-page 100%);
+  padding-bottom: 120rpx;
+}
+
+.header {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  padding: $spacing-lg $page-padding $spacing-xl;
+  border-radius: 0 0 $radius-xl $radius-xl;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-lg;
+}
+
+.greeting {
+  color: $color-text-white;
+}
+
+.greetingTitle {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.greetingSubtitle {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.syncStatusCard {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin: -$spacing-md $page-padding $spacing-md;
+}
+
+.syncStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.syncStats {
+  display: flex;
+  gap: $spacing-xl;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statNumber {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.2;
+
+  &.pending {
+    color: $color-warning;
+  }
+
+  &.failed {
+    color: $color-error;
+  }
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.mapSection {
+  margin: 0 $page-padding $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.mapContainer {
+  position: relative;
+  height: 500rpx;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  background-color: $color-map-bg;
+  box-shadow: $shadow-card;
+}
+
+.mapPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e8edf5 0%, #d4dce8 100%);
+}
+
+.mapIcon {
+  font-size: 80rpx;
+  margin-bottom: $spacing-md;
+}
+
+.mapText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-xs;
+}
+
+.mapSubText {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.mapGridInfo {
+  position: absolute;
+  top: $spacing-md;
+  left: $spacing-md;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-button;
+  box-shadow: $shadow-float;
+}
+
+.gridName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.quickActions {
+  margin: 0 $page-padding $spacing-md;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.actionItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-lg $spacing-sm;
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  position: relative;
+
+  &:active {
+    transform: scale(0.96);
+    box-shadow: $shadow-card-hover;
+  }
+}
+
+.actionIcon {
+  font-size: 48rpx;
+  margin-bottom: $spacing-sm;
+}
+
+.actionText {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.pendingPreview {
+  margin: 0 $page-padding;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.viewAllBtn {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.previewList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2 $spacing-lg;
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+}
+
+.emptyIcon {
+  font-size: 80rpx;
+  margin-bottom: $spacing-md;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}
+
+.syncProgressContainer {
+  margin: 0 $page-padding $spacing-md;
+}
+
+.redDotWrapper {
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+}

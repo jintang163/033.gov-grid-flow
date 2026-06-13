@@ -1,0 +1,105 @@
+@use '@/styles/variables.scss' as *;
+
+.imageUploader {
+  width: 100%;
+}
+
+.imageList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.imageItem {
+  position: relative;
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background-color: $color-bg-hover;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  background-color: $color-bg-hover;
+}
+
+.removeBtn {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+
+  &:active {
+    background-color: rgba(245, 63, 63, 0.8);
+  }
+}
+
+.removeIcon {
+  color: $color-text-white;
+  font-size: 32rpx;
+  line-height: 1;
+  font-weight: $font-weight-bold;
+}
+
+.imageInfo {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8rpx;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+}
+
+.imageSize {
+  color: $color-text-white;
+  font-size: 20rpx;
+}
+
+.addBtn {
+  border: 2rpx dashed $color-border;
+  background-color: $color-bg-card;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+
+  &:active {
+    background-color: $color-bg-hover;
+    border-color: $color-primary;
+  }
+}
+
+.addIcon {
+  font-size: 56rpx;
+  color: $color-text-tertiary;
+  line-height: 1;
+}
+
+.addText {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.uploaderTip {
+  margin-top: $spacing-md;
+}
+
+.tipText {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}

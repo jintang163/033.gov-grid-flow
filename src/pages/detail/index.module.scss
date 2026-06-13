@@ -1,0 +1,389 @@
+@use '@/styles/variables.scss' as *;
+
+.detailPage {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding-bottom: 160rpx;
+}
+
+.statusHeader {
+  padding: $spacing-lg $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: $color-bg-card;
+  border-bottom: 1rpx solid $color-border-light;
+}
+
+.statusLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.statusIcon {
+  font-size: 48rpx;
+}
+
+.statusInfo {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.statusText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.statusTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.contentSection {
+  background-color: $color-bg-card;
+  margin: $spacing-md $page-padding;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.sectionIcon {
+  font-size: $font-size-lg;
+}
+
+.basicInfo {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.infoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+}
+
+.infoLabel {
+  width: 120rpx;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  flex: 1;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.typeTag {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8edf5 100%);
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.priorityTag {
+  display: inline-block;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  &.low {
+    background-color: #f2f3f5;
+    color: #86909C;
+  }
+
+  &.medium {
+    background-color: #e8f3ff;
+    color: $color-primary;
+  }
+
+  &.high {
+    background-color: #fff7e8;
+    color: $color-warning;
+  }
+
+  &.urgent {
+    background-color: #fff1f0;
+    color: $color-error;
+  }
+}
+
+.titleText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+.descText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.8;
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+}
+
+.imageItem {
+  width: 100%;
+  padding-top: 100%;
+  position: relative;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background-color: $color-bg-disabled;
+}
+
+.image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.imageUploadStatus {
+  position: absolute;
+  bottom: $spacing-xs;
+  right: $spacing-xs;
+  padding: 2rpx 8rpx;
+  border-radius: $radius-button;
+  font-size: 20rpx;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: $color-text-white;
+}
+
+.locationCard {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8edf5 100%);
+  border-radius: $radius-md;
+}
+
+.locationIcon {
+  font-size: 32rpx;
+}
+
+.locationInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.locationAddress {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.locationCoords {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.metaInfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-border-light;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.metaIcon {
+  font-size: $font-size-sm;
+}
+
+.syncInfo {
+  background-color: $color-bg-card;
+  margin: $spacing-md $page-padding;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+}
+
+.syncStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 1rpx solid $color-border-light;
+}
+
+.syncDetails {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.syncDetailItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: $font-size-xs;
+}
+
+.syncDetailLabel {
+  color: $color-text-tertiary;
+}
+
+.syncDetailValue {
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.errorBox {
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background-color: #fff1f0;
+  border-radius: $radius-md;
+  border-left: 6rpx solid $color-error;
+}
+
+.errorText {
+  font-size: $font-size-xs;
+  color: $color-error;
+  line-height: 1.6;
+}
+
+.retryInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc($spacing-md + env(safe-area-inset-bottom));
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  display: flex;
+  gap: $spacing-md;
+}
+
+.btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+}
+
+.btnSecondary {
+  background-color: $color-bg-page;
+  color: $color-text-secondary;
+  border: 1rpx solid $color-border-light;
+}
+
+.btnDanger {
+  background-color: #fff1f0;
+  color: $color-error;
+  border: 1rpx solid #ffccc7;
+}
+
+.btnDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2;
+  gap: $spacing-md;
+}
+
+.loadingIcon {
+  font-size: 80rpx;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2;
+  gap: $spacing-md;
+}
+
+.emptyIcon {
+  font-size: 80rpx;
+}
+
+.emptyTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.emptyDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
+}

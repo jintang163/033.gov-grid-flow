@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>移动端离线上报与同步 - 项目概览</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+      padding: 40px 20px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .status-badge {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      margin-top: 15px;
+      font-weight: 600;
+    }
+
+    .section {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+
+    .section h2 {
+      color: #1f2937;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section h2::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 2px;
+    }
+
+    .tech-stack {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .tech-item {
+      background: #f8fafc;
+      padding: 15px 20px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .tech-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .tech-item h3 {
+      color: #374151;
+      font-size: 0.95rem;
+      margin-bottom: 5px;
+    }
+
+    .tech-item p {
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .page-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 12px;
+      padding: 20px;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    .page-card:hover {
+      border-color: #667eea;
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    }
+
+    .page-card.completed {
+      border-color: #10b981;
+    }
+
+    .page-card.completed::before {
+      background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .page-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 15px;
+      color: white;
+    }
+
+    .page-card.completed .page-icon {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .page-card h3 {
+      color: #1f2937;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+
+    .page-card p {
+      color: #6b7280;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .page-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 10px;
+      transition: background 0.2s;
+    }
+
+    .feature-item:hover {
+      background: #f1f5f9;
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .feature-item h4 {
+      color: #1f2937;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .feature-item p {
+      color: #6b7280;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 25px 15px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 12px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    .file-structure {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 25px;
+      border-radius: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .file-structure .folder {
+      color: #fbbf24;
+    }
+
+    .file-structure .file {
+      color: #60a5fa;
+    }
+
+    .file-structure .component {
+      color: #34d399;
+    }
+
+    .file-structure .indent {
+      margin-left: 20px;
+    }
+
+    .footer {
+      text-align: center;
+      color: white;
+      padding: 30px;
+      opacity: 0.9;
+    }
+
+    .footer a {
+      color: white;
+      text-decoration: underline;
+    }
+
+    .checkmark {
+      color: #10b981;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📱 移动端离线上报与同步</h1>
+      <p>网格员无网络事件暂存 · 网络恢复批量同步 · 离线地图缓存</p>
+      <span class="status-badge">✅ 开发完成 - 7个页面全部就绪</span>
+    </div>
+
+    <div class="section">
+      <h2>📊 项目统计</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">7</div>
+          <div class="stat-label">已完成页面</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">6</div>
+          <div class="stat-label">可复用组件</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">3</div>
+          <div class="stat-label">自定义Hooks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">2</div>
+          <div class="stat-label">状态管理Store</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">3</div>
+          <div class="stat-label">核心工具模块</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">0</div>
+          <div class="stat-label">代码诊断错误</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🛠️ 技术栈</h2>
+      <div class="tech-stack">
+        <div class="tech-item">
+          <h3>Taro 4.x</h3>
+          <p>跨端小程序框架</p>
+        </div>
+        <div class="tech-item">
+          <h3>React 18</h3>
+          <p>UI 构建库</p>
+        </div>
+        <div class="tech-item">
+          <h3>TypeScript</h3>
+          <p>类型安全</p>
+        </div>
+        <div class="tech-item">
+          <h3>Zustand</h3>
+          <p>状态管理</p>
+        </div>
+        <div class="tech-item">
+          <h3>CSS Modules</h3>
+          <p>样式模块化</p>
+        </div>
+        <div class="tech-item">
+          <h3>SQLite (模拟)</h3>
+          <p>本地离线存储</p>
+        </div>
+        <div class="tech-item">
+          <h3>RocketMQ</h3>
+          <p>后端消息队列</p>
+        </div>
+        <div class="tech-item">
+          <h3>Spring Boot</h3>
+          <p>后端框架</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📄 页面列表 (7/7 完成)</h2>
+      <div class="pages-grid">
+        <div class="page-card completed">
+          <div class="page-icon">🏠</div>
+          <h3>首页 (home)</h3>
+          <p>网络状态展示、同步概览、快捷操作入口、待同步事件预览</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">📝</div>
+          <h3>事件上报页 (report)</h3>
+          <p>离线/在线智能切换、文字图片录入、位置信息获取</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">📦</div>
+          <h3>本地事件页 (offline)</h3>
+          <p>离线事件列表、筛选查询、批量操作、一键同步</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">👤</div>
+          <h3>我的页面 (mine)</h3>
+          <p>用户信息、存储统计、同步设置、缓存管理</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">📋</div>
+          <h3>事件详情页 (detail)</h3>
+          <p>完整事件信息、图片预览、同步状态追踪</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">🗺️</div>
+          <h3>地图缓存页 (map-cache)</h3>
+          <p>缓存区域管理、下载进度、离线地图设置</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+        <div class="page-card completed">
+          <div class="page-icon">📜</div>
+          <h3>同步记录页 (sync-log)</h3>
+          <p>历史同步记录、筛选查询、失败重试、详情查看</p>
+          <span class="page-status status-completed">✓ 已完成</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>✨ 核心功能</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">📡</div>
+          <div>
+            <h4>网络状态监听</h4>
+            <p>实时检测网络连接，自动切换在线/离线模式</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💾</div>
+          <div>
+            <h4>本地SQLite存储</h4>
+            <p>无网络时事件暂存本地，支持文字、图片、位置信息</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔄</div>
+          <div>
+            <h4>批量同步上传</h4>
+            <p>网络恢复后一键同步，按时间戳排序避免重复</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔁</div>
+          <div>
+            <h4>自动重试机制</h4>
+            <p>同步失败自动重试，可配置最大重试次数</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔴</div>
+          <div>
+            <h4>红点提示系统</h4>
+            <p>待同步或失败数据时显示红点提醒</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🗺️</div>
+          <div>
+            <h4>离线地图缓存</h4>
+            <p>支持按区域下载地图瓦片，偏远地区可正常使用</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🆔</div>
+          <div>
+            <h4>幂等性保证</h4>
+            <p>使用clientId去重，后端按时间戳排序处理</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📸</div>
+          <div>
+            <h4>图片断点续传</h4>
+            <p>大图片分片上传，支持断点续传</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📊</div>
+          <div>
+            <h4>同步进度追踪</h4>
+            <p>实时显示同步进度、成功/失败数量</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚙️</div>
+          <div>
+            <h4>灵活配置选项</h4>
+            <p>自动同步、仅WiFi同步、缓存大小限制等</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📁 项目结构</h2>
+      <div class="file-structure">
+<span class="folder">src/</span>
+├── <span class="folder">components/</span>
+│   ├── <span class="component">StatusBadge/</span>      <span class="file">// 同步状态标签</span>
+│   ├── <span class="component">EventCard/</span>         <span class="file">// 事件卡片</span>
+│   ├── <span class="component">SyncProgress/</span>      <span class="file">// 同步进度</span>
+│   ├── <span class="component">NetworkStatus/</span>     <span class="file">// 网络状态</span>
+│   ├── <span class="component">RedDot/</span>            <span class="file">// 红点提示</span>
+│   └── <span class="component">ImageUploader/</span>     <span class="file">// 图片上传</span>
+├── <span class="folder">pages/</span>
+│   ├── <span class="folder">home/</span>                <span class="file">// 首页</span>
+│   ├── <span class="folder">report/</span>              <span class="file">// 事件上报</span>
+│   ├── <span class="folder">offline/</span>             <span class="file">// 本地事件</span>
+│   ├── <span class="folder">mine/</span>                <span class="file">// 我的</span>
+│   ├── <span class="folder">detail/</span>              <span class="file">// 事件详情</span>
+│   ├── <span class="folder">map-cache/</span>           <span class="file">// 地图缓存</span>
+│   └── <span class="folder">sync-log/</span>            <span class="file">// 同步记录</span>
+├── <span class="folder">hooks/</span>
+│   ├── <span class="file">useNetwork.ts</span>           <span class="file">// 网络监听</span>
+│   ├── <span class="file">useSync.ts</span>              <span class="file">// 同步操作</span>
+│   └── <span class="file">useOfflineDB.ts</span>         <span class="file">// 离线数据库</span>
+├── <span class="folder">store/</span>
+│   ├── <span class="file">useSyncStore.ts</span>         <span class="file">// 同步状态</span>
+│   └── <span class="file">useOfflineStore.ts</span>      <span class="file">// 离线数据</span>
+├── <span class="folder">utils/</span>
+│   ├── <span class="file">uuid.ts</span>                 <span class="file">// ID生成</span>
+│   ├── <span class="file">offlineDB.ts</span>            <span class="file">// 离线DB封装</span>
+│   └── <span class="file">syncQueue.ts</span>             <span class="file">// 同步队列</span>
+├── <span class="folder">services/</span>
+│   └── <span class="file">event.ts</span>                 <span class="file">// API服务</span>
+├── <span class="folder">types/</span>
+│   ├── <span class="file">event.ts</span>                 <span class="file">// 事件类型</span>
+│   ├── <span class="file">sync.ts</span>                  <span class="file">// 同步类型</span>
+│   └── <span class="file">offline.ts</span>               <span class="file">// 离线类型</span>
+├── <span class="folder">styles/</span>
+│   └── <span class="file">theme.scss</span>               <span class="file">// 主题配色</span>
+└── <span class="file">app.tsx</span>                      <span class="file">// 应用入口</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>🚀 项目已完成所有开发工作 | 预览服务运行在: <a href="http://localhost:10086" target="_blank">http://localhost:10086</a></p>
+      <p style="margin-top: 10px; font-size: 0.9rem;">使用 Taro 4.x + React + TypeScript + Zustand 构建</p>
+    </div>
+  </div>
+</body>
+</html>

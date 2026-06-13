@@ -1,0 +1,213 @@
+@use '@/styles/variables.scss' as *;
+
+.eventCard {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+    box-shadow: $shadow-card-hover;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.typeInfo {
+  display: flex;
+  align-items: center;
+}
+
+.typeIcon {
+  font-size: 36rpx;
+  margin-right: $spacing-sm;
+}
+
+.typeName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.cardBody {
+  margin-bottom: $spacing-md;
+}
+
+.eventTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.4;
+  margin-bottom: $spacing-sm;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.eventDesc {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.imageList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.thumbnail {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-sm;
+  background-color: $color-bg-hover;
+}
+
+.moreImages {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-sm;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moreText {
+  color: $color-text-white;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.footerLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.location {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-shrink: 0;
+}
+
+.priorityBadge {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+
+  &.low {
+    background-color: rgba(134, 144, 156, 0.1);
+  }
+
+  &.medium {
+    background-color: rgba(22, 93, 255, 0.1);
+  }
+
+  &.high {
+    background-color: rgba(255, 125, 0, 0.1);
+  }
+
+  &.urgent {
+    background-color: rgba(245, 63, 63, 0.1);
+  }
+}
+
+.priorityText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.low .priorityText { color: $color-text-tertiary; }
+.medium .priorityText { color: $color-primary; }
+.high .priorityText { color: $color-warning; }
+.urgent .priorityText { color: $color-error; }
+
+.time {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.actionBar {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.actionBtn {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.syncBtn {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+}
+
+.deleteBtn {
+  background-color: $color-bg-hover;
+  border: 2rpx solid $color-border;
+}
+
+.syncBtn .actionText {
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.deleteBtn .actionText {
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.errorInfo {
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background-color: rgba(245, 63, 63, 0.05);
+  border-radius: $radius-sm;
+  border-left: 4rpx solid $color-error;
+}
+
+.errorText {
+  font-size: $font-size-sm;
+  color: $color-error;
+}

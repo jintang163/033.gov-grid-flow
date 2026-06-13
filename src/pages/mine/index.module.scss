@@ -1,0 +1,290 @@
+@use '@/styles/variables.scss' as *;
+
+.minePage {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f0f5ff 0%, $color-bg-page 100%);
+  padding-bottom: 120rpx;
+}
+
+.userHeader {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  padding: $spacing-xl $page-padding;
+  border-radius: 0 0 $radius-xl $radius-xl;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #e8edf5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56rpx;
+  box-shadow: $shadow-float;
+}
+
+.userDetails {
+  flex: 1;
+  color: $color-text-white;
+}
+
+.userName {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.userGrid {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+  margin-bottom: $spacing-xs;
+}
+
+.userRole {
+  font-size: $font-size-xs;
+  background: rgba(255, 255, 255, 0.2);
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-button;
+  display: inline-block;
+}
+
+.statsCard {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin: -$spacing-md $page-padding $spacing-md;
+}
+
+.statsTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-sm 0;
+}
+
+.statIcon {
+  font-size: 36rpx;
+  margin-bottom: $spacing-xs;
+}
+
+.statValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.section {
+  margin: 0 $page-padding $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.menuCard {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-border-light;
+  transition: background-color $transition-base;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background-color: $color-bg-hover;
+  }
+}
+
+.menuIcon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  margin-right: $spacing-md;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8edf5 100%);
+}
+
+.menuContent {
+  flex: 1;
+}
+
+.menuText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.menuDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.menuArrow {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+}
+
+.switchItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switchLabel {
+  display: flex;
+  align-items: center;
+}
+
+.switch {
+  width: 96rpx;
+  height: 52rpx;
+  border-radius: 26rpx;
+  background-color: $color-bg-disabled;
+  position: relative;
+  transition: background-color $transition-base;
+
+  &.active {
+    background-color: $color-primary;
+  }
+}
+
+.switchKnob {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background-color: $color-text-white;
+  box-shadow: $shadow-card;
+  transition: transform $transition-base;
+}
+
+.switch.active .switchKnob {
+  transform: translateX(44rpx);
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-border-light;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.settingLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.settingValue {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.sliderContainer {
+  padding: 0 $spacing-lg $spacing-lg;
+}
+
+.slider {
+  width: 100%;
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(90deg, $color-primary 0%, $color-primary 50%, $color-bg-disabled 50%);
+  position: relative;
+  margin-bottom: $spacing-sm;
+}
+
+.sliderKnob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  background-color: $color-text-white;
+  box-shadow: $shadow-float;
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.logoutBtn {
+  margin: $spacing-xl $page-padding;
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  text-align: center;
+  box-shadow: $shadow-card;
+
+  &:active {
+    background-color: $color-bg-hover;
+  }
+}
+
+.logoutText {
+  font-size: $font-size-md;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.versionInfo {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}

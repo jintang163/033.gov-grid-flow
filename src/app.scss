@@ -1,0 +1,142 @@
+@use '@/styles/compat.scss';
+@use '@/styles/variables.scss' as *;
+
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB',
+    sans-serif;
+  font-size: $font-size-md;
+  line-height: $line-height-normal;
+  color: $color-text-primary;
+  background: linear-gradient(180deg, #f0f5ff 0%, $color-bg-page 100%);
+}
+
+.pageContainer {
+  padding: 0 $page-padding;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.card {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.flexRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.flexCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.flexCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flexBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.textEllipsis {
+  @include text-ellipsis;
+}
+
+.textEllipsis2 {
+  @include text-ellipsis-multi(2);
+}
+
+.mt8 { margin-top: $spacing-xs; }
+.mt16 { margin-top: $spacing-sm; }
+.mt24 { margin-top: $spacing-md; }
+.mt32 { margin-top: $spacing-lg; }
+.mb8 { margin-bottom: $spacing-xs; }
+.mb16 { margin-bottom: $spacing-sm; }
+.mb24 { margin-bottom: $spacing-md; }
+.mb32 { margin-bottom: $spacing-lg; }
+
+.primaryBtn {
+  @include button-reset;
+  height: $button-height-md;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  min-width: 160rpx;
+  padding: 0 $spacing-lg;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.secondaryBtn {
+  @include button-reset;
+  height: $button-height-md;
+  background-color: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-button;
+  color: $color-text-primary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  min-width: 160rpx;
+  padding: 0 $spacing-lg;
+  transition: all $transition-base;
+
+  &:active {
+    background-color: $color-bg-hover;
+    transform: scale(0.98);
+  }
+}
+
+.dangerBtn {
+  @include button-reset;
+  height: $button-height-md;
+  background-color: $color-error;
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  min-width: 160rpx;
+  padding: 0 $spacing-lg;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.successBtn {
+  @include button-reset;
+  height: $button-height-md;
+  background-color: $color-success;
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  min-width: 160rpx;
+  padding: 0 $spacing-lg;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}

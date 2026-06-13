@@ -1,0 +1,86 @@
+@use '@/styles/variables.scss' as *;
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-round;
+  white-space: nowrap;
+
+  &.small {
+    padding: 4rpx 12rpx;
+    font-size: $font-size-xs;
+
+    .icon {
+      font-size: 20rpx;
+      margin-right: 4rpx;
+    }
+  }
+
+  &.medium {
+    padding: 6rpx 16rpx;
+    font-size: $font-size-sm;
+
+    .icon {
+      font-size: 24rpx;
+      margin-right: 6rpx;
+    }
+  }
+
+  &.large {
+    padding: 8rpx 20rpx;
+    font-size: $font-size-md;
+
+    .icon {
+      font-size: 28rpx;
+      margin-right: 8rpx;
+    }
+  }
+
+  &.pending {
+    background-color: rgba(255, 125, 0, 0.1);
+    color: $color-warning;
+    border: 1rpx solid rgba(255, 125, 0, 0.3);
+  }
+
+  &.syncing {
+    background-color: rgba(22, 93, 255, 0.1);
+    color: $color-primary;
+    border: 1rpx solid rgba(22, 93, 255, 0.3);
+
+    .icon {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  &.synced {
+    background-color: rgba(0, 180, 42, 0.1);
+    color: $color-success;
+    border: 1rpx solid rgba(0, 180, 42, 0.3);
+  }
+
+  &.failed {
+    background-color: rgba(245, 63, 63, 0.1);
+    color: $color-error;
+    border: 1rpx solid rgba(245, 63, 63, 0.3);
+  }
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text {
+  font-weight: $font-weight-medium;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

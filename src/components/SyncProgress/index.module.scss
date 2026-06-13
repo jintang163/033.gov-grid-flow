@@ -1,0 +1,101 @@
+@use '@/styles/variables.scss' as *;
+
+.syncProgress {
+  background-color: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.progressInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.progressTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.progressCount {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.cancelBtn {
+  padding: $spacing-sm $spacing-md;
+  background-color: rgba(245, 63, 63, 0.1);
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    background-color: rgba(245, 63, 63, 0.2);
+  }
+}
+
+.cancelText {
+  font-size: $font-size-sm;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.progressBarContainer {
+  margin-bottom: $spacing-md;
+}
+
+.progressDetails {
+  display: flex;
+  gap: $spacing-lg;
+  margin-bottom: $spacing-sm;
+}
+
+.detailItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+
+  &.successDot {
+    background-color: $color-success;
+  }
+
+  &.failedDot {
+    background-color: $color-error;
+  }
+
+  &.pendingDot {
+    background-color: $color-warning;
+  }
+}
+
+.detailText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.currentEvent {
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.currentEventText {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+}
