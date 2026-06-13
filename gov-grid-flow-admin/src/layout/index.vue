@@ -8,13 +8,32 @@
       <el-menu
         :default-active="activeMenu"
         :collapse="isCollapse"
+        :default-openeds="defaultOpeneds"
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF"
         router
       >
         <template v-for="route in menuRoutes" :key="route.path">
-          <el-menu-item :index="resolvePath(route)">
+          <el-sub-menu v-if="route.children.length > 1" :index="route.path">
+            <template #title>
+              <el-icon>
+                <component :is="route.meta?.icon || route.children[0].meta.icon" />
+              </el-icon>
+              <span>{{ route.meta?.title || route.children[0].meta.title }}</span>
+            </template>
+            <el-menu-item
+              v-for="child in route.children"
+              :key="child.path"
+              :index="route.path + '/' + child.path"
+            >
+              <el-icon>
+                <component :is="child.meta.icon" />
+              </el-icon>
+              <template #title>{{ child.meta.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="resolvePath(route)">
             <el-icon>
               <component :is="route.children[0].meta.icon" />
             </el-icon>
@@ -78,17 +97,44 @@ const isCollapse = computed(() => !appStore.sidebar.opened)
 
 const activeMenu = computed(() => route.path)
 
+const defaultOpeneds = computed(() => {
+  const matched = route.matched
+  if (matched.length >= 2 && matched[0].path !== '/') {
+    return [matched[0].path]
+  }
+  return []
+})
+
+const hasAnyPermission = (children, roles) => {
+  return children.some(child => {
+    if (child.meta && child.meta.roles) {
+      return roles.some(role => child.meta.roles.includes(role))
+    }
+    return true
+  })
+}
+
 const menuRoutes = computed(() => {
   const currentRole = userStore.role
   if (!currentRole) return []
   const roles = [currentRole]
   return router.options.routes.filter(r => {
     if (!r.children || r.children.length === 0 || r.path === '/login') return false
-    const child = r.children[0]
-    if (child.meta && child.meta.roles) {
-      return roles.some(role => child.meta.roles.includes(role))
+    if (r.meta && r.meta.roles) {
+      if (!roles.some(role => r.meta.roles.includes(role))) {
+        return false
+      }
     }
-    return true
+    return hasAnyPermission(r.children, roles)
+  }).map(r => {
+    if (r.children.length <= 1) return r
+    const filteredChildren = r.children.filter(child => {
+      if (child.meta && child.meta.roles) {
+        return roles.some(role => child.meta.roles.includes(role))
+      }
+      return true
+    })
+    return { ...r, children: filteredChildren }
   })
 })
 

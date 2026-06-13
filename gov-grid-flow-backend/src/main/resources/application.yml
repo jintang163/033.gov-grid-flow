@@ -89,6 +89,12 @@ cv:
     enabled: true
   similarity-threshold: 60.0
 
+urge:
+  cron: "0 */5 * * * ?"
+  default-time-limit-hours: 24
+  default-warning-ratio: 0.20
+  escalate-after-hours: 24
+
 logging:
   level:
     root: info

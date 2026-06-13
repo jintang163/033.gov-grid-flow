@@ -1,7 +1,7 @@
 <template>
   <div class="grid-tree">
     <el-input
-      v-model="filterText"
+      v-model="innerFilterText"
       placeholder="输入关键词搜索"
       clearable
       size="default"
@@ -44,7 +44,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
-import { Search, OfficeBuilding, HomeFilled, Grid, GridFilled } from '@element-plus/icons-vue'
+import { Search, OfficeBuilding, HomeFilled, Grid } from '@element-plus/icons-vue'
 import { getGridTree } from '@/api/grid'
 import { ElMessage } from 'element-plus'
 
@@ -82,7 +82,7 @@ function getLevelIcon(level) {
     1: OfficeBuilding,
     2: HomeFilled,
     3: Grid,
-    4: GridFilled
+    4: Grid
   }
   return icons[level] || Grid
 }

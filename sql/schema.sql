@@ -121,6 +121,9 @@ CREATE TABLE `event_info` (
   `status`              varchar(30)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-待受理 APPROVED-已受理 DISPATCHED-已分派 HANDLED-已处置 COMPLETED-已办结 REJECTED-已驳回',
   `priority`            varchar(30)  NOT NULL DEFAULT 'NORMAL' COMMENT '优先级：LOW-低 NORMAL-中 HIGH-高 URGENT-紧急',
   `event_timestamp`     datetime     DEFAULT NULL COMMENT '客户端上报时间戳（离线同步时排序用）',
+  `dispatched_at`       datetime     DEFAULT NULL COMMENT '分派处置时间（计时起点）',
+  `deadline_at`         datetime     DEFAULT NULL COMMENT '处置截止时间',
+  `urge_level`          int(11)      DEFAULT 0 COMMENT '催办等级：0-未催办 1-黄色预警 2-红色超时 3-升级督办',
   `process_instance_id` varchar(64)  DEFAULT NULL COMMENT 'Flowable流程实例ID',
   `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -135,11 +138,81 @@ CREATE TABLE `event_info` (
   KEY `idx_event_type` (`event_type`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_event_timestamp` (`event_timestamp`),
+  KEY `idx_dispatched_at` (`dispatched_at`),
+  KEY `idx_deadline_at` (`deadline_at`),
+  KEY `idx_urge_level` (`urge_level`),
   KEY `idx_process_instance_id` (`process_instance_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件表';
 
 -- ---------------------------------------------
--- 6. 事件处理记录表 event_process
+-- 6. 催办规则表 event_urge_rule
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_urge_rule`;
+CREATE TABLE `event_urge_rule` (
+  `id`               bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_type`       varchar(50) NOT NULL COMMENT '事件类型编码',
+  `event_type_name` varchar(100) DEFAULT NULL COMMENT '事件类型名称',
+  `time_limit_hours` int(11) NOT NULL DEFAULT 24 COMMENT '处置时限（小时）',
+  `warning_ratio`    decimal(5,2) NOT NULL DEFAULT 0.20 COMMENT '预警阈值比例，剩余时间低于此值触发黄色预警',
+  `escalate_level`  varchar(20) DEFAULT 'GRID_LEADER' COMMENT '超时升级对象：WORKER GRID_LEADER SUPERVISOR ADMIN',
+  `enabled`          tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `created_at`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted`          tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_event_type` (`event_type`),
+  KEY `idx_enabled` (`enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办规则表';
+
+-- ---------------------------------------------
+-- 7. 催办模板表 event_urge_template
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_urge_template`;
+CREATE TABLE `event_urge_template` (
+  `id`               bigint(20) NOT NULL AUTO_INCREMENT,
+  `template_code`    varchar(50) NOT NULL COMMENT '模板编码：WARNING-预警 URGENT-超时 ESCALATE-升级',
+  `template_name`    varchar(100) NOT NULL COMMENT '模板名称',
+  `title_template`   varchar(200) NOT NULL COMMENT '标题模板',
+  `content_template` text NOT NULL COMMENT '内容模板',
+  `channel`          varchar(50) NOT NULL DEFAULT 'INNER' COMMENT '接收渠道：INNER SMS EMAIL WECHAT 多渠道逗号分隔',
+  `enabled`          tinyint(1) NOT NULL DEFAULT 1,
+  `created_at`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted`          tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_template_code` (`template_code`),
+  KEY `idx_enabled` (`enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办模板表';
+
+-- ---------------------------------------------
+-- 8. 催办记录表 event_urge_record
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_urge_record`;
+CREATE TABLE `event_urge_record` (
+  `id`            bigint(20) NOT NULL AUTO_INCREMENT,
+  `event_id`      bigint(20) NOT NULL COMMENT '事件ID',
+  `event_no`      varchar(50) DEFAULT NULL,
+  `urge_level`    int(11) NOT NULL COMMENT '催办等级：1预警 2超时 3升级',
+  `rule_id`       bigint(20) DEFAULT NULL,
+  `template_id`   bigint(20) DEFAULT NULL,
+  `title`         varchar(200) DEFAULT NULL,
+  `content`       text,
+  `channel`       varchar(50) DEFAULT NULL,
+  `receiver_id`   bigint(20) DEFAULT NULL,
+  `receiver_name` varchar(50) DEFAULT NULL,
+  `send_status`   int(11) NOT NULL DEFAULT 0 COMMENT '0待发 1已发 2失败',
+  `error_msg`     varchar(500) DEFAULT NULL,
+  `created_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted`       tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_event_id` (`event_id`),
+  KEY `idx_urge_level` (`urge_level`),
+  KEY `idx_send_status` (`send_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办记录表';
+
+-- ---------------------------------------------
+-- 9. 事件处理记录表 event_process
 -- ---------------------------------------------
 DROP TABLE IF EXISTS `event_process`;
 CREATE TABLE `event_process` (

@@ -74,4 +74,13 @@ public class EventInfo extends BaseEntity {
 
     @TableField("event_timestamp")
     private java.time.LocalDateTime eventTimestamp;
+
+    @TableField("dispatched_at")
+    private java.time.LocalDateTime dispatchedAt;
+
+    @TableField("deadline_at")
+    private java.time.LocalDateTime deadlineAt;
+
+    @TableField("urge_level")
+    private Integer urgeLevel;
 }

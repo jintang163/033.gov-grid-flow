@@ -71,6 +71,32 @@ const routes = [
         meta: { title: '统计分析', icon: 'DataAnalysis', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
       }
     ]
+  },
+  {
+    path: '/urge',
+    component: () => import('@/layout/index.vue'),
+    redirect: '/urge/rule',
+    meta: { title: '催办管理', icon: 'AlarmClock', roles: ['admin', 'street_manager', 'grid_leader'] },
+    children: [
+      {
+        path: 'rule',
+        name: 'UrgeRule',
+        component: () => import('@/views/urge/rule.vue'),
+        meta: { title: '催办规则', icon: 'Setting', roles: ['admin', 'street_manager'] }
+      },
+      {
+        path: 'template',
+        name: 'UrgeTemplate',
+        component: () => import('@/views/urge/template.vue'),
+        meta: { title: '催办模板', icon: 'Document', roles: ['admin', 'street_manager'] }
+      },
+      {
+        path: 'record',
+        name: 'UrgeRecord',
+        component: () => import('@/views/urge/record.vue'),
+        meta: { title: '催办记录', icon: 'Bell', roles: ['admin', 'street_manager', 'grid_leader'] }
+      }
+    ]
   }
 ]
 

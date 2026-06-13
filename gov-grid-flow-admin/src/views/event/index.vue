@@ -35,6 +35,14 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="催办状态">
+          <el-select v-model="searchForm.urgeLevel" placeholder="请选择" clearable style="width: 140px">
+            <el-option label="正常" :value="0" />
+            <el-option label="预警" :value="1" />
+            <el-option label="超时" :value="2" />
+            <el-option label="升级督办" :value="3" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="创建时间">
           <el-date-picker
             v-model="searchForm.dateRange"
@@ -90,6 +98,21 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="urgeLevel" label="催办状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getUrgeTagType(row.urgeLevel)" effect="dark" size="small">
+              {{ getUrgeLevelLabel(row.urgeLevel) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="截止时间" width="170">
+          <template #default="{ row }">
+            <span v-if="row.deadlineAt" :class="getDeadlineClass(row.urgeLevel, row.deadlineAt)">
+              {{ row.deadlineAt }}
+            </span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="reporterName" label="上报人" width="100" />
         <el-table-column prop="reportTime" label="上报时间" width="170" />
         <el-table-column prop="handlerName" label="当前处理人" width="100" />
@@ -108,6 +131,7 @@
             <template v-else-if="row.status === 'HANDLED'">
               <el-button link type="success" size="small" @click="handleVerify(row)">核查</el-button>
             </template>
+            <el-button link type="warning" size="small" @click="handleEscalate(row)">督办</el-button>
             <el-button link type="info" size="small" @click="handleViewDiagram(row)">流程图</el-button>
             <el-button link type="primary" size="small" @click="handleViewHistory(row)">历史</el-button>
           </template>
@@ -573,6 +597,7 @@ import {
   getNearbyResources,
   callMember
 } from '@/api/event'
+import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
 import * as echarts from 'echarts'
 
@@ -587,6 +612,7 @@ const searchForm = reactive({
   status: '',
   eventTypeId: '',
   gridId: '',
+  urgeLevel: '',
   dateRange: []
 })
 
@@ -690,6 +716,53 @@ function getPriorityTagType(priority) {
   return map[priority] || 'info'
 }
 
+function getUrgeLevelLabel(level) {
+  const map = {
+    0: '正常',
+    1: '预警',
+    2: '超时',
+    3: '升级督办'
+  }
+  return map[level] || '正常'
+}
+
+function getUrgeTagType(level) {
+  const map = {
+    0: 'info',
+    1: 'warning',
+    2: 'danger',
+    3: 'danger'
+  }
+  return map[level] || 'info'
+}
+
+function getDeadlineClass(level) {
+  if (level >= 2) return 'deadline-overdue'
+  if (level === 1) return 'deadline-warning'
+  return 'deadline-normal'
+}
+
+async function handleEscalate(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要将事件「${row.title || row.eventNo}」升级为上级督办吗？`,
+      '升级督办',
+      {
+        confirmButtonText: '确定升级',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await escalateEvent(row.id || row.eventId)
+    ElMessage.success('升级督办成功')
+    fetchList()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.message || '升级失败')
+    }
+  }
+}
+
 function getProcessDialogTitle() {
   const map = {
     approve: '审核通过',
@@ -765,7 +838,8 @@ async function fetchList() {
       keyword: searchForm.keyword,
       status: searchForm.status,
       eventTypeId: searchForm.eventTypeId,
-      gridId: searchForm.gridId
+      gridId: searchForm.gridId,
+      urgeLevel: searchForm.urgeLevel !== '' ? searchForm.urgeLevel : undefined
     }
     if (searchForm.dateRange && searchForm.dateRange.length === 2) {
       params.startTime = searchForm.dateRange[0]
@@ -1286,6 +1360,20 @@ onMounted(() => {
 .event-page {
   .search-form {
     margin-bottom: 0;
+  }
+
+  .deadline-normal {
+    color: #303133;
+  }
+
+  .deadline-warning {
+    color: #e6a23c;
+    font-weight: 500;
+  }
+
+  .deadline-overdue {
+    color: #f56c6c;
+    font-weight: bold;
   }
 
   .action-bar {
