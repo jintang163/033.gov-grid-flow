@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .and()
                 .authorizeRequests()
                 .antMatchers("/auth/login", "/auth/send-code").permitAll()
+                .antMatchers("/ws/**").permitAll()
+                .antMatchers("/dashboard/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js").permitAll()
                 .antMatchers("/doc.html", "/webjars/**", "/v2/api-docs", "/v3/api-docs", "/swagger-resources/**", "/swagger-ui/**", "/favicon.ico").permitAll()
                 .antMatchers("/actuator/**").permitAll()

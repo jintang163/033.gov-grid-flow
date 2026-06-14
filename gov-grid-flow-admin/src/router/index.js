@@ -12,6 +12,12 @@ const routes = [
     hidden: true
   },
   {
+    path: '/screen',
+    name: 'CommandScreen',
+    component: () => import('@/views/screen/index.vue'),
+    meta: { title: '指挥调度大屏' }
+  },
+  {
     path: '/',
     component: () => import('@/layout/index.vue'),
     redirect: '/dashboard',
@@ -117,7 +123,7 @@ const router = createRouter({
   routes
 })
 
-const whiteList = ['/login']
+const whiteList = ['/login', '/screen']
 
 function hasPermission(roles, route) {
   if (route.meta && route.meta.roles) {

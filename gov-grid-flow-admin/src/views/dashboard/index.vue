@@ -1,5 +1,8 @@
 <template>
   <div class="dashboard">
+    <div class="dashboard-toolbar">
+      <el-button type="primary" @click="$router.push('/screen')" :icon="Monitor">指挥调度大屏</el-button>
+    </div>
     <el-row :gutter="20" class="stat-cards">
       <el-col :xs="12" :sm="8" :md="6" :lg="6" v-for="item in statCards" :key="item.title">
         <el-card shadow="hover" class="stat-card" :body-style="{ padding: '20px' }">
@@ -128,7 +131,8 @@ import {
   CircleCheck,
   Timer,
   Star,
-  RefreshLeft
+  RefreshLeft,
+  Monitor
 } from '@element-plus/icons-vue'
 import {
   getOverviewStats,
@@ -472,6 +476,12 @@ onBeforeUnmount(() => {
   background: #f5f7fa;
   min-height: 100%;
   box-sizing: border-box;
+
+  .dashboard-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
 
   .stat-cards {
     margin-bottom: 20px;
