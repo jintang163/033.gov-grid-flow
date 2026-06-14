@@ -196,7 +196,7 @@
           <span>{{ dispatchForm.eventTitle }}</span>
         </el-form-item>
         <el-form-item label="派给">
-          <el-select v-model="dispatchForm.handlerId" placeholder="选择网格员" filterable style="width: 100%">
+          <el-select v-model="dispatchForm.assigneeId" placeholder="选择网格员" filterable style="width: 100%">
             <el-option
               v-for="m in onlineMembers"
               :key="m.userId"
@@ -204,9 +204,6 @@
               :value="m.userId"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="dispatchForm.remark" type="textarea" :rows="3" placeholder="派单备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -238,8 +235,8 @@ const currentMapMode = ref('heatmap')
 const dispatchForm = ref({
   eventId: null,
   eventTitle: '',
-  handlerId: null,
-  remark: ''
+  assigneeId: null,
+  taskId: null
 })
 
 const mapModes = [
@@ -450,6 +447,15 @@ function initMapChart() {
   if (mapChart) mapChart.dispose()
   mapChart = echarts.init(mapContainerRef.value)
 
+  mapChart.on('click', (params) => {
+    if (params.componentType === 'series' && params.data) {
+      const eventData = params.data.eventData
+      if (eventData) {
+        showEventDetail(eventData)
+      }
+    }
+  })
+
   updateMapData()
 }
 
@@ -499,6 +505,7 @@ function updateMapData() {
       ? eventMarkers.value.map(e => ({
           name: e.title,
           value: [e.lng, e.lat, 1],
+          eventData: e,
           itemStyle: {
             color: e.priority === 'HIGH' || e.priority === 'URGENT' ? '#ff6b6b' :
                    e.priority === 'MEDIUM' ? '#ffd93d' : '#00d4ff'
@@ -513,7 +520,13 @@ function updateMapData() {
         borderColor: '#00d4ff',
         borderWidth: 1,
         textStyle: { color: '#e0f0ff' },
-        formatter: (params) => params.name
+        formatter: (params) => {
+          const e = params.data.eventData
+          if (e) {
+            return `<b>${e.title}</b><br/>类型: ${e.eventType || ''}<br/>优先级: ${priorityLabel(e.priority)}<br/>状态: ${statusLabel(e.status)}<br/><span style="color:#00d4ff">点击查看详情</span>`
+          }
+          return params.name
+        }
       },
       geo: {
         map: '',
@@ -560,13 +573,28 @@ function generateMockHeatmapData() {
 
 function generateMockMarkerData() {
   const types = ['环境卫生', '市政设施', '治安隐患', '噪音扰民', '民生服务']
+  const typeCodes = ['environment', 'facility', 'security', 'noise', 'service']
   const priorities = ['HIGH', 'MEDIUM', 'LOW']
   const data = []
   for (let i = 0; i < 15; i++) {
-    const priority = priorities[Math.floor(Math.random() * 3)]
+    const priority = priorities[i % 3]
+    const eventData = {
+      eventId: 1000 + i,
+      eventNo: 'EVT202406' + String(i + 1).padStart(3, '0'),
+      title: types[i % 5] + '事件' + (i + 1),
+      eventType: typeCodes[i % 5],
+      status: i < 5 ? 'PENDING' : 'APPROVED',
+      priority,
+      lng: 116.3 + Math.random() * 0.2,
+      lat: 39.85 + Math.random() * 0.1,
+      address: '某街道某社区某路' + (i + 1) + '号',
+      reporterName: '居民' + (i + 1),
+      reportTime: '2024-06-14 ' + String(8 + i).padStart(2, '0') + ':00:00'
+    }
     data.push({
-      name: types[i % 5] + '事件' + (i + 1),
-      value: [116.3 + Math.random() * 0.2, 39.85 + Math.random() * 0.1, 1],
+      name: eventData.title,
+      value: [eventData.lng, eventData.lat, 1],
+      eventData,
       itemStyle: {
         color: priority === 'HIGH' ? '#ff6b6b' : priority === 'MEDIUM' ? '#ffd93d' : '#00d4ff'
       }
@@ -585,15 +613,15 @@ function handleDispatch(event) {
   dispatchForm.value = {
     eventId: event.eventId,
     eventTitle: event.title,
-    handlerId: null,
-    remark: ''
+    assigneeId: null,
+    taskId: null
   }
   eventDialogVisible.value = false
   dispatchDialogVisible.value = true
 }
 
 async function submitDispatch() {
-  if (!dispatchForm.value.handlerId) {
+  if (!dispatchForm.value.assigneeId) {
     ElMessage.warning('请选择派单人员')
     return
   }
@@ -601,11 +629,12 @@ async function submitDispatch() {
   try {
     await dispatchEvent({
       eventId: dispatchForm.value.eventId,
-      handlerId: dispatchForm.value.handlerId,
-      remark: dispatchForm.value.remark
+      assigneeId: dispatchForm.value.assigneeId,
+      taskId: dispatchForm.value.taskId || null
     })
     ElMessage.success('派单成功')
     dispatchDialogVisible.value = false
+    loadData()
   } catch (e) {
     ElMessage.error('派单失败')
   } finally {
@@ -699,13 +728,13 @@ function getMockData() {
       count: Math.floor(Math.random() * 10) + 1
     })),
     communityRank: [
-      { gridId: 1, gridName: '东城社区', totalCount: 186, completedCount: 168, completionRate: 90.3 },
-      { gridId: 2, gridName: '西城社区', totalCount: 162, completedCount: 140, completionRate: 86.4 },
-      { gridId: 3, gridName: '南城社区', totalCount: 148, completedCount: 125, completionRate: 84.5 },
-      { gridId: 4, gridName: '北城社区', totalCount: 135, completedCount: 110, completionRate: 81.5 },
-      { gridId: 5, gridName: '高新社区', totalCount: 112, completedCount: 95, completionRate: 84.8 },
-      { gridId: 6, gridName: '经开社区', totalCount: 98, completedCount: 78, completionRate: 79.6 },
-      { gridId: 7, gridName: '郊区社区', totalCount: 76, completedCount: 58, completionRate: 76.3 }
+      { gridId: 1, gridName: '东城社区', totalCount: 356, completedCount: 318, completionRate: 89.3 },
+      { gridId: 2, gridName: '西城社区', totalCount: 312, completedCount: 270, completionRate: 86.5 },
+      { gridId: 3, gridName: '南城社区', totalCount: 288, completedCount: 244, completionRate: 84.7 },
+      { gridId: 4, gridName: '北城社区', totalCount: 265, completedCount: 220, completionRate: 83.0 },
+      { gridId: 5, gridName: '高新社区', totalCount: 218, completedCount: 185, completionRate: 84.9 },
+      { gridId: 6, gridName: '经开社区', totalCount: 196, completedCount: 158, completionRate: 80.6 },
+      { gridId: 7, gridName: '郊区社区', totalCount: 152, completedCount: 116, completionRate: 76.3 }
     ],
     memberStatus: Array.from({ length: 16 }, (_, i) => ({
       userId: 100 + i,

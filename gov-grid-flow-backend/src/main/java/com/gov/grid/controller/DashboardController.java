@@ -2,6 +2,7 @@ package com.gov.grid.controller;
 
 import com.gov.grid.common.Result;
 import com.gov.grid.service.DashboardService;
+import com.gov.grid.service.EventProcessService;
 import com.gov.grid.vo.CommunityRankVO;
 import com.gov.grid.vo.DashboardOverviewVO;
 import com.gov.grid.vo.EventMarkerVO;
@@ -22,6 +23,7 @@ import java.util.Map;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final EventProcessService eventProcessService;
 
     @ApiOperation("获取大屏概览数据")
     @GetMapping("/overview")
@@ -62,7 +64,12 @@ public class DashboardController {
     @ApiOperation("一键派单")
     @PostMapping("/dispatch")
     public Result<Void> dispatchEvent(@RequestBody Map<String, Object> params) {
-        return Result.success();
+        Long eventId = Long.valueOf(params.get("eventId").toString());
+        String assigneeId = params.get("assigneeId").toString();
+        String taskId = params.get("taskId") != null ? params.get("taskId").toString() : null;
+        Long operatorId = params.get("operatorId") != null ? Long.valueOf(params.get("operatorId").toString()) : 1L;
+        eventProcessService.assignTask(eventId, taskId, assigneeId, operatorId);
+        return Result.success("派单成功", null);
     }
 
     @ApiOperation("获取大屏全部数据")

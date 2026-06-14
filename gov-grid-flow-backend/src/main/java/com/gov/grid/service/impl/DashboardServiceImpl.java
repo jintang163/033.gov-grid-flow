@@ -25,8 +25,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -94,6 +96,10 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public List<HeatmapPointVO> getEventHeatmap() {
         LambdaQueryWrapper<EventInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.and(w -> w
+                .eq(EventInfo::getStatus, EventStatus.PENDING.getCode())
+                .or().eq(EventInfo::getStatus, EventStatus.APPROVED.getCode())
+                .or().eq(EventInfo::getStatus, EventStatus.DISPATCHED.getCode()));
         wrapper.isNotNull(EventInfo::getLng).isNotNull(EventInfo::getLat);
         List<EventInfo> events = eventInfoMapper.selectList(wrapper);
 
@@ -118,32 +124,74 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<CommunityRankVO> getCommunityRank() {
-        List<GridInfo> gridList = gridInfoMapper.selectList(null);
+        List<GridInfo> allGrids = gridInfoMapper.selectList(null);
         List<EventInfo> allEvents = eventInfoMapper.selectList(null);
-        Map<Long, List<EventInfo>> gridEventMap = allEvents.stream()
-                .filter(e -> e.getGridId() != null)
-                .collect(Collectors.groupingBy(EventInfo::getGridId));
+
+        Map<Long, Long> gridParentMap = new HashMap<>();
+        Map<Long, String> gridNameMap = new HashMap<>();
+        for (GridInfo grid : allGrids) {
+            gridNameMap.put(grid.getId(), grid.getGridName());
+            if (grid.getParentId() != null) {
+                gridParentMap.put(grid.getId(), grid.getParentId());
+            }
+        }
+
+        Map<Long, Long> gridToCommunity = new HashMap<>();
+        for (GridInfo grid : allGrids) {
+            if (grid.getGridLevel() != null && grid.getGridLevel() == 2) {
+                gridToCommunity.put(grid.getId(), grid.getId());
+            }
+        }
+
+        for (GridInfo grid : allGrids) {
+            if (gridToCommunity.containsKey(grid.getId())) continue;
+            Long communityId = findAncestorCommunity(grid.getId(), gridParentMap, gridToCommunity);
+            gridToCommunity.put(grid.getId(), communityId);
+        }
+
+        Map<Long, List<EventInfo>> communityEventMap = new HashMap<>();
+        for (EventInfo event : allEvents) {
+            if (event.getGridId() == null) continue;
+            Long communityId = gridToCommunity.get(event.getGridId());
+            if (communityId == null) continue;
+            communityEventMap.computeIfAbsent(communityId, k -> new ArrayList<>()).add(event);
+        }
 
         List<CommunityRankVO> result = new ArrayList<>();
-        for (GridInfo grid : gridList) {
-            CommunityRankVO vo = new CommunityRankVO();
-            vo.setGridId(grid.getId());
-            vo.setGridName(grid.getGridName());
+        for (GridInfo grid : allGrids) {
+            if (grid.getGridLevel() != null && grid.getGridLevel() == 2) {
+                CommunityRankVO vo = new CommunityRankVO();
+                vo.setGridId(grid.getId());
+                vo.setGridName(grid.getGridName());
 
-            List<EventInfo> gridEvents = gridEventMap.getOrDefault(grid.getId(), new ArrayList<>());
-            vo.setTotalCount((long) gridEvents.size());
-            long completedCount = gridEvents.stream()
-                    .filter(e -> EventStatus.COMPLETED.getCode().equals(e.getStatus()))
-                    .count();
-            vo.setCompletedCount(completedCount);
-            vo.setCompletionRate(vo.getTotalCount() > 0 ?
-                    BigDecimal.valueOf((completedCount * 100.0) / vo.getTotalCount())
-                            .setScale(2, RoundingMode.HALF_UP).doubleValue() : 0.0);
-            result.add(vo);
+                List<EventInfo> communityEvents = communityEventMap.getOrDefault(grid.getId(), new ArrayList<>());
+                vo.setTotalCount((long) communityEvents.size());
+                long completedCount = communityEvents.stream()
+                        .filter(e -> EventStatus.COMPLETED.getCode().equals(e.getStatus()))
+                        .count();
+                vo.setCompletedCount(completedCount);
+                vo.setCompletionRate(vo.getTotalCount() > 0 ?
+                        BigDecimal.valueOf((completedCount * 100.0) / vo.getTotalCount())
+                                .setScale(2, RoundingMode.HALF_UP).doubleValue() : 0.0);
+                result.add(vo);
+            }
         }
 
         result.sort(Comparator.comparingDouble(CommunityRankVO::getCompletionRate).reversed());
         return result;
+    }
+
+    private Long findAncestorCommunity(Long gridId, Map<Long, Long> gridParentMap, Map<Long, Long> gridToCommunity) {
+        Long current = gridId;
+        Set<Long> visited = new HashSet<>();
+        while (current != null && !visited.contains(current)) {
+            visited.add(current);
+            if (gridToCommunity.containsKey(current)) {
+                return gridToCommunity.get(current);
+            }
+            current = gridParentMap.get(current);
+        }
+        return gridId;
     }
 
     @Override

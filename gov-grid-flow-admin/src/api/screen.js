@@ -46,7 +46,12 @@ export function dispatchEvent(data) {
   return request({
     url: '/dashboard/dispatch',
     method: 'post',
-    data
+    data: {
+      eventId: data.eventId,
+      assigneeId: data.assigneeId,
+      taskId: data.taskId || null,
+      operatorId: data.operatorId || null
+    }
   })
 }
 
