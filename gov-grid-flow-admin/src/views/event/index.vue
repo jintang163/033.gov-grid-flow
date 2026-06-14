@@ -214,22 +214,71 @@
         <el-descriptions-item label="经度">{{ eventDetail.longitude || '-' }}</el-descriptions-item>
         <el-descriptions-item label="纬度">{{ eventDetail.latitude || '-' }}</el-descriptions-item>
       </el-descriptions>
-      <el-divider>媒体资料</el-divider>
-      <div v-if="eventDetail && eventDetail.mediaList && eventDetail.mediaList.length" class="media-list">
-        <el-image
-          v-for="(media, index) in eventDetail.mediaList.filter(m => m.type === 'IMAGE')"
+      <el-divider content-position="left">
+        <span style="display: flex; align-items: center; gap: 8px">
+          媒体资料
+          <el-button type="primary" size="small" :icon="Search" @click="handleCheckEventTamper" :loading="tamperCheckData.loading">
+            检测文件完整性
+          </el-button>
+          <el-tag v-if="tamperCheckData.results.length > 0" :type="tamperCheckData.hasTampered ? 'danger' : 'success'" effect="dark">
+            {{ tamperCheckData.hasTampered ? '检测到篡改' : '全部正常' }}
+          </el-tag>
+        </span>
+      </el-divider>
+
+      <div v-if="tamperCheckData.results.length > 0" class="tamper-results">
+        <el-alert
+          v-for="(result, index) in tamperCheckData.results"
           :key="index"
-          :src="media.url"
-          :preview-src-list="eventDetail.mediaList.filter(m => m.type === 'IMAGE').map(m => m.url)"
-          :initial-index="index"
-          fit="cover"
-          style="width: 120px; height: 120px; margin-right: 12px; border-radius: 4px"
-          preview-teleported
-        />
+          :title="result.message"
+          :type="result.tampered ? 'error' : 'success'"
+          :closable="false"
+          style="margin-bottom: 8px"
+        >
+          <template #default>
+            <div style="font-size: 12px; margin-top: 4px">
+              <div>文件URL: {{ result.fileUrl }}</div>
+              <div>原始MD5: {{ result.originalMd5 }}</div>
+              <div>当前MD5: {{ result.currentMd5 }}</div>
+              <div>检测时间: {{ result.verifyTime }}</div>
+              <div v-if="result.watermarkInfo" style="margin-top: 4px">
+                水印信息: <span class="watermark-info">{{ result.watermarkInfo }}</span>
+              </div>
+            </div>
+          </template>
+        </el-alert>
+      </div>
+
+      <div v-if="eventDetail && eventDetail.mediaList && eventDetail.mediaList.length" class="media-list">
+        <div v-for="(media, index) in eventDetail.mediaList.filter(m => m.type === 'IMAGE')" :key="index" class="media-item">
+          <div class="media-image-wrapper">
+            <el-image
+              :src="media.url"
+              :preview-src-list="eventDetail.mediaList.filter(m => m.type === 'IMAGE').map(m => m.url)"
+              :initial-index="index"
+              fit="cover"
+              style="width: 120px; height: 120px; border-radius: 4px"
+              preview-teleported
+            />
+            <div class="watermark-badge" v-if="getTamperResult(media.url)">
+              <el-tag size="small" :type="getTamperResult(media.url)?.tampered ? 'danger' : 'success'">
+                {{ getTamperResult(media.url)?.tampered ? '已篡改' : '正常' }}
+              </el-tag>
+            </div>
+          </div>
+          <div class="media-actions">
+            <el-button link type="primary" size="small" @click="handleCheckSingleTamper(media.url)">
+              检测
+            </el-button>
+          </div>
+        </div>
         <div v-if="eventDetail.mediaList.filter(m => m.type !== 'IMAGE').length" style="margin-top: 12px">
           <div v-for="(media, index) in eventDetail.mediaList.filter(m => m.type !== 'IMAGE')" :key="'file-' + index" class="file-item">
             <el-icon><Document /></el-icon>
             <a :href="media.url" target="_blank">{{ media.name || media.url }}</a>
+            <el-button link type="primary" size="small" @click="handleCheckSingleTamper(media.url)">
+              检测完整性
+            </el-button>
           </div>
         </div>
       </div>
@@ -678,6 +727,7 @@ import {
 import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
 import { getEventRelationGraph } from '@/api/analysis'
+import { checkEventFilesTamper, checkTamper } from '@/api/watermark'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
@@ -756,6 +806,12 @@ const nearbyData = reactive({
 const dispatchMapRef = ref(null)
 const dispatchChart = ref(null)
 const nearbyTabName = ref('map')
+
+const tamperCheckData = reactive({
+  loading: false,
+  results: [],
+  hasTampered: false
+})
 
 function getStatusLabel(status) {
   const map = {
@@ -1114,6 +1170,75 @@ async function handleViewDetail(row) {
   if (lng && lat) {
     fetchNearbyResources(parseFloat(lng), parseFloat(lat))
   }
+  
+  if (row.id || row.eventId) {
+    handleCheckEventTamper()
+  }
+}
+
+function getTamperResult(fileUrl) {
+  return tamperCheckData.results.find(r => r.fileUrl === fileUrl)
+}
+
+async function handleCheckEventTamper() {
+  const eventId = eventDetail.value?.id || eventDetail.value?.eventId
+  if (!eventId) return
+  
+  tamperCheckData.loading = true
+  tamperCheckData.results = []
+  tamperCheckData.hasTampered = false
+  
+  try {
+    const res = await checkEventFilesTamper(eventId)
+    const data = res?.data || res || []
+    tamperCheckData.results = data
+    tamperCheckData.hasTampered = data.some(r => r.tampered)
+    
+    if (tamperCheckData.hasTampered) {
+      ElMessage.warning('检测到文件被篡改！')
+    } else if (data.length > 0) {
+      ElMessage.success('所有文件完整性检测通过')
+    } else {
+      ElMessage.info('当前事件暂无水印存证记录')
+    }
+  } catch (e) {
+    console.error('检测文件完整性失败', e)
+    ElMessage.error(e.message || '检测失败')
+  } finally {
+    tamperCheckData.loading = false
+  }
+}
+
+async function handleCheckSingleTamper(fileUrl) {
+  if (!fileUrl) return
+  
+  try {
+    const res = await checkTamper(fileUrl)
+    const data = res?.data || res
+    
+    const existingIndex = tamperCheckData.results.findIndex(r => r.fileUrl === fileUrl)
+    if (existingIndex >= 0) {
+      tamperCheckData.results[existingIndex] = data
+    } else {
+      tamperCheckData.results.push(data)
+    }
+    tamperCheckData.hasTampered = tamperCheckData.results.some(r => r.tampered)
+    
+    if (data.tampered) {
+      ElMessage.warning('文件已被篡改！')
+    } else {
+      ElMessage.success('文件完整性正常')
+    }
+  } catch (e) {
+    console.error('检测文件完整性失败', e)
+    ElMessage.error(e.message || '检测失败')
+  }
+}
+
+function resetTamperCheckData() {
+  tamperCheckData.loading = false
+  tamperCheckData.results = []
+  tamperCheckData.hasTampered = false
 }
 
 async function fetchNearbyResources(lng, lat) {
@@ -1525,6 +1650,7 @@ watch(() => detailDialogVisible.value, (val) => {
       dispatchChart.value.dispose()
       dispatchChart.value = null
     }
+    resetTamperCheckData()
   }
 })
 
@@ -1973,6 +2099,69 @@ onMounted(() => {
 
     .graph-group {
       margin-top: 16px;
+    }
+  }
+
+  .tamper-results {
+    margin-bottom: 16px;
+
+    .watermark-info {
+      font-family: 'Courier New', monospace;
+      background: #f5f7fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #606266;
+    }
+  }
+
+  .media-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    .media-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+
+      .media-image-wrapper {
+        position: relative;
+        display: inline-block;
+
+        .watermark-badge {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          z-index: 10;
+        }
+      }
+
+      .media-actions {
+        display: flex;
+        gap: 4px;
+      }
+    }
+
+    .file-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f5f7fa;
+      border-radius: 4px;
+      margin-bottom: 8px;
+
+      a {
+        color: #409eff;
+        text-decoration: none;
+        flex: 1;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
     }
   }
 }

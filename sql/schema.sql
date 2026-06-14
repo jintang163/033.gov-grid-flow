@@ -470,6 +470,49 @@ CREATE TABLE `grid_member_location` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='网格员实时位置';
 
 -- ---------------------------------------------
+-- 12. 文件水印存证表 file_watermark
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `file_watermark`;
+CREATE TABLE `file_watermark` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `file_url` varchar(255) NOT NULL COMMENT '文件访问URL',
+  `original_md5` varchar(64) NOT NULL COMMENT '原始文件MD5值',
+  `watermarked_md5` varchar(64) NOT NULL COMMENT '加水印后文件MD5值',
+  `watermark_info` varchar(500) DEFAULT NULL COMMENT '水印信息JSON（上报时间、网格员姓名、事件编号）',
+  `event_id` bigint(20) DEFAULT NULL COMMENT '关联事件ID',
+  `reporter_id` bigint(20) DEFAULT NULL COMMENT '上报人ID',
+  `is_encrypted` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否加密：0-否 1-是',
+  `encryption_key_id` bigint(20) DEFAULT NULL COMMENT '加密密钥ID',
+  `tamper_verified` tinyint(1) NOT NULL DEFAULT 0 COMMENT '篡改检测：0-未检测 1-检测正常 2-检测异常',
+  `tamper_verify_time` datetime DEFAULT NULL COMMENT '最后检测时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_url` (`file_url`),
+  KEY `idx_event_id` (`event_id`),
+  KEY `idx_reporter_id` (`reporter_id`),
+  KEY `idx_original_md5` (`original_md5`),
+  KEY `idx_watermarked_md5` (`watermarked_md5`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件水印存证表';
+
+-- ---------------------------------------------
+-- 13. 加密密钥表 encryption_key
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `encryption_key`;
+CREATE TABLE `encryption_key` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `key_type` varchar(20) NOT NULL COMMENT '密钥类型：AES-对称密钥 RSA_PUBLIC-公钥 RSA_PRIVATE-私钥',
+  `key_name` varchar(100) NOT NULL COMMENT '密钥名称',
+  `key_content` text NOT NULL COMMENT '密钥内容（Base64编码）',
+  `dept_id` bigint(20) DEFAULT NULL COMMENT '所属部门ID（用于数字信封，仅处置部门可解密）',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_key_type` (`key_type`),
+  KEY `idx_dept_id` (`dept_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加密密钥表';
+
+-- ---------------------------------------------
 -- 周边资源示例数据：摄像头
 -- ---------------------------------------------
 INSERT INTO `resource_camera` (`id`, `camera_code`, `camera_name`, `camera_type`, `lng`, `lat`, `address`, `rtsp_url`, `hls_url`, `grid_id`, `manufacturer`, `status`) VALUES
@@ -498,5 +541,14 @@ INSERT INTO `grid_member_location` (`id`, `user_id`, `user_name`, `phone`, `grid
 (1, 2, '网格长张三', '13900000002', 1, 116.407000, 39.904000, '城东第一网格居委会', 1, '2024-01-01 09:28:00', 5.50, 78),
 (2, 3, '网格员李四', '13900000003', 1, 116.408500, 39.905500, '王府井步行街北口', 1, '2024-01-01 09:30:00', 3.20, 85),
 (3, 4, '网格员王五', '13900000004', 2, 116.417600, 39.914600, '建国门内大街地铁站附近', 1, '2024-01-01 09:29:00', 4.80, 62);
+
+-- ---------------------------------------------
+-- 示例密钥数据（用于数字信封加密）
+-- ---------------------------------------------
+-- 处置中心RSA密钥对（用于数字信封，仅处置部门可解密）
+INSERT INTO `encryption_key` (`key_type`, `key_name`, `key_content`, `dept_id`, `status`) VALUES
+('RSA_PUBLIC', '处置中心公钥', 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB', 3, 1),
+('RSA_PRIVATE', '处置中心私钥', 'MIICXAIBAAKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQABAoGAFijko56+qGyN8M0RVyaRAXz++xTqHBLh3tx4VgMtrQ+WEgCjhoTwo23KMBAuJGSYnRmoBZM3lMfTKevIkAidPExvYCdm5dYq3XToLkkLv5L2pIIVOFMDG+KESnAFV7l2c+cnzRMW0+b6f8mR1CJzZuxVLL6Q02fvLi55/mbSYxECQQDeAw6fiIQXGukBI4eMZZt4nscy2o12KyYner3VpoeE+Np2q+Z3pvAMd/aNzQ/W9WaI+NRfcxUJrmfPwIGm63ilAkEAxCL5HQb2bQr4ByorcMWm/hEP2MZzROV73yF41hPsRC9m66KrheO9HPTJuo3/9s5p+sqGxOlFL0NDt4SkosjgGwJAFklyR1uZ/wPJjj611cdBcztlPdqoxssQGnh85BzCj/u3WqBpE2vjvyyvyI5kX6zk7S0ljKtt2jny2+00VsBerQJBAJGC1Mg5Oydo5NwD6BiROrPxGo2bpTbu/fhrT8ebHkTz2eplU9VQQSQzY1oZMVX8i1m5WUTLPz2yLJIBQVdXqhMCQBGoiuSoSjafUhV7i1cEGpb88h5NBYZzWXGZ37sJ5QsW+sJyoNde3xH8vdXhzU7eT82D6X/scw9RZz+/6rCJ4=', 3, 1),
+('AES', '全局AES密钥', 'YjA2NDFhOGQwYjQwNDE2MGE2YzRjNTkxNmY3YjQwOWE=', NULL, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

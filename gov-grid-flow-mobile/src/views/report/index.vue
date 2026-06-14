@@ -213,7 +213,22 @@
               </template>
             </van-field>
           </div>
-          <div class="upload-hint">* 图片自动压缩上传，建议单张不超过2MB</div>
+          <div class="upload-hint">* 图片自动添加水印（上报时间、网格员姓名、事件编号），MD5存证防篡改</div>
+        </van-cell-group>
+
+        <van-cell-group inset title="安全设置" style="margin-top: 12px">
+          <van-field name="sensitive">
+            <template #input>
+              <div class="anonymous-wrap">
+                <span class="anonymous-label">敏感证据加密</span>
+                <van-switch v-model="watermarkInfo.sensitive" :active-value="true" :inactive-value="false" />
+              </div>
+            </template>
+          </van-field>
+          <div class="sensitive-hint" v-if="watermarkInfo.sensitive">
+            <van-icon name="info-o" size="12" color="#1989fa" />
+            <span>启用后，图片将使用数字信封加密，仅处置部门可解密查看</span>
+          </div>
         </van-cell-group>
 
         <van-cell-group inset title="上报人信息" style="margin-top: 12px">
@@ -330,9 +345,12 @@ import { reactive, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice } from '@/api'
+import { uploadWithWatermark } from '@/api/watermark'
+import { addImageWatermark, addVideoWatermark, calculateMD5 } from '@/utils/watermark'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
 import { useOfflineStore, useUserStore } from '@/store'
 import { generateClientId } from '@/utils/offlineDB'
+import dayjs from 'dayjs'
 
 const router = useRouter()
 const offlineStore = useOfflineStore()
@@ -371,6 +389,12 @@ const nearbyResources = reactive({
   emergencyCount: 0,
   memberCount: 0,
   loading: false
+})
+
+const watermarkInfo = reactive({
+  eventNo: '',
+  enabled: true,
+  sensitive: false
 })
 
 const isRecording = ref(false)
@@ -591,26 +615,52 @@ const beforeImageRead = async (file) => {
   return true
 }
 
+const getReporterInfo = () => {
+  const reporterName = form.anonymous === 0 ? form.reporterName : '匿名用户'
+  const reporterId = form.anonymous === 0 ? userStore.userId : null
+  return { reporterName, reporterId }
+}
+
 const afterImageRead = async (file) => {
   const files = Array.isArray(file) ? file : [file]
+  const { reporterName, reporterId } = getReporterInfo()
+  const reportTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
+
   for (const f of files) {
     try {
       f.status = 'uploading'
+      f.message = '添加水印中...'
+
+      const watermarkResult = await addImageWatermark(f.file, {
+        reportTime,
+        reporterName,
+        eventNo: watermarkInfo.eventNo
+      })
+
       f.message = '上传中...'
-      const compressedFile = await compressImage(f.file)
-      const res = await uploadFile([compressedFile])
-      const urls = res.data || []
-      if (urls.length > 0) {
-        uploadedImages.value.push(urls[0])
+      const res = await uploadWithWatermark(
+        watermarkResult.file,
+        reportTime,
+        reporterName,
+        watermarkInfo.eventNo,
+        null,
+        reporterId,
+        watermarkInfo.sensitive
+      )
+
+      const data = res.data || {}
+      if (data.fileUrl) {
+        uploadedImages.value.push(data.fileUrl)
         f.status = 'done'
-        f.message = ''
+        f.message = '已加水印'
       } else {
         f.status = 'failed'
         f.message = '上传失败'
       }
     } catch (e) {
+      console.error('图片水印上传失败:', e)
       f.status = 'failed'
-      f.message = '上传失败'
+      f.message = e.message || '上传失败'
     }
   }
 }
@@ -633,23 +683,44 @@ const beforeVideoRead = (file) => {
 
 const afterVideoRead = async (file) => {
   const files = Array.isArray(file) ? file : [file]
+  const { reporterName, reporterId } = getReporterInfo()
+  const reportTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
+
   for (const f of files) {
     try {
       f.status = 'uploading'
+      f.message = 'MD5存证中...'
+
+      const watermarkResult = await addVideoWatermark(f.file, {
+        reportTime,
+        reporterName,
+        eventNo: watermarkInfo.eventNo
+      })
+
       f.message = '上传中...'
-      const res = await uploadFile([f.file])
-      const urls = res.data || []
-      if (urls.length > 0) {
-        uploadedVideos.value.push(urls[0])
+      const res = await uploadWithWatermark(
+        watermarkResult.file,
+        reportTime,
+        reporterName,
+        watermarkInfo.eventNo,
+        null,
+        reporterId,
+        watermarkInfo.sensitive
+      )
+
+      const data = res.data || {}
+      if (data.fileUrl) {
+        uploadedVideos.value.push(data.fileUrl)
         f.status = 'done'
-        f.message = ''
+        f.message = '已存证'
       } else {
         f.status = 'failed'
         f.message = '上传失败'
       }
     } catch (e) {
+      console.error('视频上传失败:', e)
       f.status = 'failed'
-      f.message = '上传失败'
+      f.message = e.message || '上传失败'
     }
   }
 }
@@ -890,6 +961,12 @@ const onSubmit = async () => {
     }
 
     offlineStore.saveEvent({ ...submitData, status: 'synced', serverId: res?.data?.id, syncedAt: Date.now() })
+
+    const eventNo = res?.data?.eventNo || res?.data?.id
+    if (eventNo && (uploadedImages.value.length > 0 || uploadedVideos.value.length > 0)) {
+      console.log('[Watermark] 事件编号已生成:', eventNo)
+    }
+
     showToast({ type: 'success', message: '上报成功' })
     setTimeout(() => {
       router.back()
@@ -983,6 +1060,18 @@ const onSubmit = async () => {
   padding: 4px 16px 12px;
   font-size: 12px;
   color: #969799;
+}
+
+.sensitive-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 12px;
+  font-size: 12px;
+  color: #1989fa;
+  background: #f0f9ff;
+  border-radius: 4px;
+  margin: 0 16px 12px;
 }
 
 .voice-input-wrap {

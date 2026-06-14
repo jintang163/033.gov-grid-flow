@@ -80,6 +80,12 @@ file:
   access:
     prefix: /file
 
+watermark:
+  font:
+    size: 14
+    color: '#FF0000'
+  opacity: 0.3
+
 asr:
   mock:
     enabled: true
