@@ -252,14 +252,22 @@
       <div v-if="eventDetail && eventDetail.mediaList && eventDetail.mediaList.length" class="media-list">
         <div v-for="(media, index) in eventDetail.mediaList.filter(m => m.type === 'IMAGE')" :key="index" class="media-item">
           <div class="media-image-wrapper">
+            <div v-if="isEncryptedFile(media.url)" class="encrypt-lock" title="数字信封加密，需解密查看">
+              <el-icon :size="24" color="#ee0a24"><Lock /></el-icon>
+            </div>
             <el-image
+              v-if="!isEncryptedFile(media.url)"
               :src="media.url"
-              :preview-src-list="eventDetail.mediaList.filter(m => m.type === 'IMAGE').map(m => m.url)"
-              :initial-index="index"
+              :preview-src-list="eventDetail.mediaList.filter(m => m.type === 'IMAGE' && !isEncryptedFile(m.url)).map(m => m.url)"
+              :initial-index="getUnencryptedImageIndex(index)"
               fit="cover"
               style="width: 120px; height: 120px; border-radius: 4px"
               preview-teleported
             />
+            <div v-else class="encrypted-placeholder" style="width: 120px; height: 120px; border-radius: 4px">
+              <el-icon :size="36" color="#909399"><Lock /></el-icon>
+              <span class="encrypted-text">加密文件</span>
+            </div>
             <div class="watermark-badge" v-if="getTamperResult(media.url)">
               <el-tag size="small" :type="getTamperResult(media.url)?.tampered ? 'danger' : 'success'">
                 {{ getTamperResult(media.url)?.tampered ? '已篡改' : '正常' }}
@@ -270,14 +278,38 @@
             <el-button link type="primary" size="small" @click="handleCheckSingleTamper(media.url)">
               检测
             </el-button>
+            <el-button
+              v-if="isEncryptedFile(media.url)"
+              link
+              type="danger"
+              size="small"
+              @click="handleDecryptFile(media.url)"
+              :icon="Unlock"
+            >
+              解密下载
+            </el-button>
           </div>
         </div>
         <div v-if="eventDetail.mediaList.filter(m => m.type !== 'IMAGE').length" style="margin-top: 12px">
           <div v-for="(media, index) in eventDetail.mediaList.filter(m => m.type !== 'IMAGE')" :key="'file-' + index" class="file-item">
             <el-icon><Document /></el-icon>
-            <a :href="media.url" target="_blank">{{ media.name || media.url }}</a>
+            <a v-if="!isEncryptedFile(media.url)" :href="media.url" target="_blank">{{ media.name || media.url }}</a>
+            <span v-else style="color: #909399">{{ media.name || media.url }}
+              <el-tag size="small" type="warning" effect="plain" style="margin-left: 8px">
+                <el-icon style="margin-right: 2px"><Lock /></el-icon>加密
+              </el-tag>
+            </span>
             <el-button link type="primary" size="small" @click="handleCheckSingleTamper(media.url)">
               检测完整性
+            </el-button>
+            <el-button
+              v-if="isEncryptedFile(media.url)"
+              link
+              type="danger"
+              size="small"
+              @click="handleDecryptFile(media.url)"
+            >
+              解密下载
             </el-button>
           </div>
         </div>
@@ -708,7 +740,9 @@ import {
   MagicStick,
   View,
   ArrowRight,
-  WarningFilled
+  WarningFilled,
+  Lock,
+  Unlock
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -727,7 +761,7 @@ import {
 import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
 import { getEventRelationGraph } from '@/api/analysis'
-import { checkEventFilesTamper, checkTamper } from '@/api/watermark'
+import { checkEventFilesTamper, checkTamper, decryptAndDownload } from '@/api/watermark'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
@@ -1178,6 +1212,43 @@ async function handleViewDetail(row) {
 
 function getTamperResult(fileUrl) {
   return tamperCheckData.results.find(r => r.fileUrl === fileUrl)
+}
+
+function isEncryptedFile(fileUrl) {
+  const r = getTamperResult(fileUrl)
+  return r && r.isEncrypted === 1
+}
+
+function getTargetDeptId(fileUrl) {
+  const r = getTamperResult(fileUrl)
+  return r?.targetDeptId
+}
+
+function getUnencryptedImageIndex(index) {
+  const images = eventDetail.value?.mediaList?.filter(m => m.type === 'IMAGE') || []
+  let unencryptedCount = 0
+  for (let i = 0; i < images.length; i++) {
+    if (!isEncryptedFile(images[i].url)) {
+      if (i === index) return unencryptedCount
+      unencryptedCount++
+    }
+  }
+  return 0
+}
+
+async function handleDecryptFile(fileUrl) {
+  const deptId = getTargetDeptId(fileUrl)
+  if (!deptId) {
+    ElMessage.warning('未找到该加密文件对应的目标处置部门')
+    return
+  }
+  try {
+    decryptAndDownload(fileUrl, deptId)
+    ElMessage.success('已发起解密下载请求，请在新标签页查看结果')
+  } catch (e) {
+    console.error('解密下载失败:', e)
+    ElMessage.error(e.message || '解密下载失败（您可能无权访问此部门的加密文件）')
+  }
 }
 
 async function handleCheckEventTamper() {
@@ -2134,6 +2205,37 @@ onMounted(() => {
           top: -6px;
           right: -6px;
           z-index: 10;
+        }
+
+        .encrypt-lock {
+          position: absolute;
+          top: 6px;
+          left: 6px;
+          z-index: 15;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.92);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .encrypted-placeholder {
+          background: #f5f7fa;
+          border: 2px dashed #c0c4cc;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+
+          .encrypted-text {
+            font-size: 13px;
+            color: #909399;
+            font-weight: 500;
+          }
         }
       }
 

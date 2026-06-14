@@ -478,11 +478,14 @@ CREATE TABLE `file_watermark` (
   `file_url` varchar(255) NOT NULL COMMENT '文件访问URL',
   `original_md5` varchar(64) NOT NULL COMMENT '原始文件MD5值',
   `watermarked_md5` varchar(64) NOT NULL COMMENT '加水印后文件MD5值',
+  `stored_md5` varchar(64) DEFAULT NULL COMMENT '实际落盘文件MD5（加密后为加密文件MD5）',
   `watermark_info` varchar(500) DEFAULT NULL COMMENT '水印信息JSON（上报时间、网格员姓名、事件编号）',
   `event_id` bigint(20) DEFAULT NULL COMMENT '关联事件ID',
+  `event_no` varchar(64) DEFAULT NULL COMMENT '事件编号（冗余，便于按事件查询）',
   `reporter_id` bigint(20) DEFAULT NULL COMMENT '上报人ID',
   `is_encrypted` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否加密：0-否 1-是',
   `encryption_key_id` bigint(20) DEFAULT NULL COMMENT '加密密钥ID',
+  `target_dept_id` bigint(20) DEFAULT NULL COMMENT '目标处置部门ID（仅加密文件有值）',
   `tamper_verified` tinyint(1) NOT NULL DEFAULT 0 COMMENT '篡改检测：0-未检测 1-检测正常 2-检测异常',
   `tamper_verify_time` datetime DEFAULT NULL COMMENT '最后检测时间',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -490,7 +493,9 @@ CREATE TABLE `file_watermark` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_url` (`file_url`),
   KEY `idx_event_id` (`event_id`),
+  KEY `idx_event_no` (`event_no`),
   KEY `idx_reporter_id` (`reporter_id`),
+  KEY `idx_target_dept_id` (`target_dept_id`),
   KEY `idx_original_md5` (`original_md5`),
   KEY `idx_watermarked_md5` (`watermarked_md5`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件水印存证表';
@@ -503,10 +508,12 @@ CREATE TABLE `encryption_key` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `key_type` varchar(20) NOT NULL COMMENT '密钥类型：AES-对称密钥 RSA_PUBLIC-公钥 RSA_PRIVATE-私钥',
   `key_name` varchar(100) NOT NULL COMMENT '密钥名称',
-  `key_content` text NOT NULL COMMENT '密钥内容（Base64编码）',
+  `key_content` text NOT NULL COMMENT '密钥内容（敏感密钥已用主密钥加密）',
+  `key_encrypted` tinyint(1) NOT NULL DEFAULT 0 COMMENT '密钥内容是否已加密：0-否 1-是',
   `dept_id` bigint(20) DEFAULT NULL COMMENT '所属部门ID（用于数字信封，仅处置部门可解密）',
   `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_key_type` (`key_type`),
   KEY `idx_dept_id` (`dept_id`)
@@ -544,11 +551,12 @@ INSERT INTO `grid_member_location` (`id`, `user_id`, `user_name`, `phone`, `grid
 
 -- ---------------------------------------------
 -- 示例密钥数据（用于数字信封加密）
+-- 注意：敏感密钥（RSA_PRIVATE/AES）初始 key_encrypted=0，系统启动时会自动用主密钥加密迁移，迁移后 key_encrypted=1
 -- ---------------------------------------------
--- 处置中心RSA密钥对（用于数字信封，仅处置部门可解密）
-INSERT INTO `encryption_key` (`key_type`, `key_name`, `key_content`, `dept_id`, `status`) VALUES
-('RSA_PUBLIC', '处置中心公钥', 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB', 3, 1),
-('RSA_PRIVATE', '处置中心私钥', 'MIICXAIBAAKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQABAoGAFijko56+qGyN8M0RVyaRAXz++xTqHBLh3tx4VgMtrQ+WEgCjhoTwo23KMBAuJGSYnRmoBZM3lMfTKevIkAidPExvYCdm5dYq3XToLkkLv5L2pIIVOFMDG+KESnAFV7l2c+cnzRMW0+b6f8mR1CJzZuxVLL6Q02fvLi55/mbSYxECQQDeAw6fiIQXGukBI4eMZZt4nscy2o12KyYner3VpoeE+Np2q+Z3pvAMd/aNzQ/W9WaI+NRfcxUJrmfPwIGm63ilAkEAxCL5HQb2bQr4ByorcMWm/hEP2MZzROV73yF41hPsRC9m66KrheO9HPTJuo3/9s5p+sqGxOlFL0NDt4SkosjgGwJAFklyR1uZ/wPJjj611cdBcztlPdqoxssQGnh85BzCj/u3WqBpE2vjvyyvyI5kX6zk7S0ljKtt2jny2+00VsBerQJBAJGC1Mg5Oydo5NwD6BiROrPxGo2bpTbu/fhrT8ebHkTz2eplU9VQQSQzY1oZMVX8i1m5WUTLPz2yLJIBQVdXqhMCQBGoiuSoSjafUhV7i1cEGpb88h5NBYZzWXGZ37sJ5QsW+sJyoNde3xH8vdXhzU7eT82D6X/scw9RZz+/6rCJ4=', 3, 1),
-('AES', '全局AES密钥', 'YjA2NDFhOGQwYjQwNDE2MGE2YzRjNTkxNmY3YjQwOWE=', NULL, 1);
+-- 处置中心RSA密钥对（dept_id=3 对应处置中心部门ID；若实际处置中心部门ID不同请根据业务修改）
+INSERT INTO `encryption_key` (`key_type`, `key_name`, `key_content`, `key_encrypted`, `dept_id`, `status`) VALUES
+('RSA_PUBLIC',  '处置中心公钥',     'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB', 0, 3, 1),
+('RSA_PRIVATE', '处置中心私钥(启动后自动加密存储)', 'MIICXAIBAAKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQABAoGAFijko56+qGyN8M0RVyaRAXz++xTqHBLh3tx4VgMtrQ+WEgCjhoTwo23KMBAuJGSYnRmoBZM3lMfTKevIkAidPExvYCdm5dYq3XToLkkLv5L2pIIVOFMDG+KESnAFV7l2c+cnzRMW0+b6f8mR1CJzZuxVLL6Q02fvLi55/mbSYxECQQDeAw6fiIQXGukBI4eMZZt4nscy2o12KyYner3VpoeE+Np2q+Z3pvAMd/aNzQ/W9WaI+NRfcxUJrmfPwIGm63ilAkEAxCL5HQb2bQr4ByorcMWm/hEP2MZzROV73yF41hPsRC9m66KrheO9HPTJuo3/9s5p+sqGxOlFL0NDt4SkosjgGwJAFklyR1uZ/wPJjj611cdBcztlPdqoxssQGnh85BzCj/u3WqBpE2vjvyyvyI5kX6zk7S0ljKtt2jny2+00VsBerQJBAJGC1Mg5Oydo5NwD6BiROrPxGo2bpTbu/fhrT8ebHkTz2eplU9VQQSQzY1oZMVX8i1m5WUTLPz2yLJIBQVdXqhMCQBGoiuSoSjafUhV7i1cEGpb88h5NBYZzWXGZ37sJ5QsW+sJyoNde3xH8vdXhzU7eT82D6X/scw9RZz+/6rCJ4=', 0, 3, 1),
+('AES',         '全局AES密钥(启动后自动加密存储)', 'YjA2NDFhOGQwYjQwNDE2MGE2YzRjNTkxNmY3YjQwOWE=', 0, NULL, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

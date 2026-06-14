@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.symmetric.AES;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.dto.DigitalEnvelopeDTO;
@@ -38,6 +39,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,6 +76,12 @@ public class WatermarkServiceImpl implements WatermarkService {
     @Value("${watermark.opacity:0.3}")
     private float opacity;
 
+    @Value("${watermark.video.mode:skip}")
+    private String videoMode;
+
+    @Value("${encryption.master-key:gov-grid-flow-master-key-32bytes!!!}")
+    private String masterKey;
+
     private Font watermarkFont;
 
     @PostConstruct
@@ -90,7 +98,8 @@ public class WatermarkServiceImpl implements WatermarkService {
                 watermarkDTO.getEventNo(),
                 watermarkDTO.getEventId(),
                 watermarkDTO.getReporterId(),
-                watermarkDTO.getSensitive()
+                watermarkDTO.getSensitive(),
+                watermarkDTO.getTargetDeptId()
         );
     }
 
@@ -98,7 +107,7 @@ public class WatermarkServiceImpl implements WatermarkService {
     public WatermarkResultVO uploadWithWatermark(MultipartFile file, String reportTime,
                                                   String reporterName, String eventNo,
                                                   Long eventId, Long reporterId,
-                                                  Boolean sensitive) throws IOException {
+                                                  Boolean sensitive, Long targetDeptId) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("文件不能为空");
         }
@@ -114,34 +123,55 @@ public class WatermarkServiceImpl implements WatermarkService {
 
         byte[] watermarkedBytes;
         String newFilename;
+        String finalStoredMd5;
 
         if (isImageFile(extension)) {
             watermarkedBytes = addImageWatermark(originalBytes, extension, watermarkInfo);
             newFilename = IdUtil.fastSimpleUUID() + "." + extension;
         } else if (isVideoFile(extension)) {
+            if ("throw".equalsIgnoreCase(videoMode)) {
+                throw new BusinessException("视频文件暂不支持可视化水印，请上传图片");
+            }
+            log.warn("视频文件暂不支持可视化水印，仅进行MD5存证：{}", originalFilename);
             watermarkedBytes = originalBytes;
             newFilename = IdUtil.fastSimpleUUID() + "." + extension;
-            log.warn("视频文件暂不支持加水印，仅进行MD5存证：{}", originalFilename);
         } else {
             throw new BusinessException("不支持的文件类型：" + extension);
         }
 
         String watermarkedMd5 = SecureUtil.md5(watermarkedBytes);
+        byte[] finalBytes = watermarkedBytes;
+        Long encryptionKeyId = null;
 
         if (Boolean.TRUE.equals(sensitive)) {
+            if (targetDeptId == null) {
+                throw new BusinessException("敏感证据加密必须指定目标处置部门");
+            }
             try {
-                DigitalEnvelopeDTO envelope = encryptionService.createDigitalEnvelope(watermarkedBytes, 3L);
-                watermarkedBytes = objectMapper.writeValueAsBytes(envelope);
+                DigitalEnvelopeDTO envelope = encryptionService.createDigitalEnvelope(watermarkedBytes, targetDeptId);
+                finalBytes = objectMapper.writeValueAsBytes(envelope);
                 newFilename = IdUtil.fastSimpleUUID() + ".enc";
+                EncryptionKey pubKey = encryptionKeyMapper.selectOne(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<EncryptionKey>()
+                                .eq(EncryptionKey::getKeyType, "RSA_PUBLIC")
+                                .eq(EncryptionKey::getDeptId, targetDeptId)
+                                .eq(EncryptionKey::getStatus, 1)
+                                .last("LIMIT 1")
+                );
+                if (pubKey != null) {
+                    encryptionKeyId = pubKey.getId();
+                }
             } catch (Exception e) {
                 log.error("数字信封加密失败", e);
                 throw new BusinessException("敏感文件加密失败：" + e.getMessage());
             }
         }
 
+        finalStoredMd5 = SecureUtil.md5(finalBytes);
+
         File destFile = new File(uploadPath, newFilename);
         try (OutputStream os = new FileOutputStream(destFile)) {
-            os.write(watermarkedBytes);
+            os.write(finalBytes);
         }
 
         String fileUrl = accessPrefix + "/" + newFilename;
@@ -154,8 +184,11 @@ public class WatermarkServiceImpl implements WatermarkService {
         fileWatermark.setEventId(eventId);
         fileWatermark.setReporterId(reporterId);
         fileWatermark.setIsEncrypted(Boolean.TRUE.equals(sensitive) ? 1 : 0);
+        fileWatermark.setEncryptionKeyId(encryptionKeyId);
         fileWatermark.setTamperVerified(1);
         fileWatermark.setTamperVerifyTime(LocalDateTime.now());
+        fileWatermark.setStoredMd5(finalStoredMd5);
+        fileWatermark.setTargetDeptId(targetDeptId);
         fileWatermarkMapper.insert(fileWatermark);
 
         WatermarkResultVO result = new WatermarkResultVO();
@@ -164,10 +197,71 @@ public class WatermarkServiceImpl implements WatermarkService {
         result.setWatermarkedMd5(watermarkedMd5);
         result.setWatermarkInfo(watermarkInfoJson);
         result.setTampered(false);
-        result.setTamperMessage("水印添加成功，MD5已存证");
+        result.setEncrypted(Boolean.TRUE.equals(sensitive));
+        
+        if (isVideoFile(extension)) {
+            result.setWatermarkApplied(false);
+            result.setTamperMessage(Boolean.TRUE.equals(sensitive)
+                    ? "视频文件暂不支持可视化水印，已进行MD5存证并数字信封加密保护"
+                    : "视频文件暂不支持可视化水印，已进行MD5存证防篡改");
+        } else {
+            result.setWatermarkApplied(true);
+            result.setTamperMessage(Boolean.TRUE.equals(sensitive)
+                    ? "水印添加并加密成功，MD5已存证"
+                    : "水印添加成功，MD5已存证");
+        }
 
-        log.info("文件水印处理完成：{}，原始MD5：{}，水印MD5：{}", fileUrl, originalMd5, watermarkedMd5);
+        log.info("文件水印处理完成：{}，事件ID：{}，加密：{}，原始MD5：{}，水印MD5：{}，落盘MD5：{}",
+                fileUrl, eventId, sensitive, originalMd5, watermarkedMd5, finalStoredMd5);
         return result;
+    }
+
+    @Override
+    public void linkEventToFiles(Long eventId, String eventNo, List<String> fileUrls) {
+        if (eventId == null || fileUrls == null || fileUrls.isEmpty()) {
+            return;
+        }
+        for (String fileUrl : fileUrls) {
+            if (StrUtil.isBlank(fileUrl)) continue;
+            try {
+                FileWatermark fw = fileWatermarkMapper.selectOne(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<FileWatermark>()
+                                .eq(FileWatermark::getFileUrl, fileUrl.trim())
+                                .last("LIMIT 1")
+                );
+                if (fw != null) {
+                    boolean needUpdate = false;
+                    if (fw.getEventId() == null || !fw.getEventId().equals(eventId)) {
+                        fw.setEventId(eventId);
+                        needUpdate = true;
+                    }
+                    if (StrUtil.isNotBlank(eventNo) && (StrUtil.isBlank(fw.getEventNo()) || !fw.getEventNo().equals(eventNo))) {
+                        fw.setEventNo(eventNo);
+                        needUpdate = true;
+                    }
+                    if (StrUtil.isNotBlank(eventNo)) {
+                        try {
+                            WatermarkInfo info = StrUtil.isNotBlank(fw.getWatermarkInfo())
+                                    ? objectMapper.readValue(fw.getWatermarkInfo(), WatermarkInfo.class)
+                                    : new WatermarkInfo();
+                            if (StrUtil.isBlank(info.getEventNo())) {
+                                info.setEventNo(eventNo);
+                                fw.setWatermarkInfo(objectMapper.writeValueAsString(info));
+                                needUpdate = true;
+                            }
+                        } catch (Exception parseEx) {
+                            log.warn("解析水印信息失败，跳过watermarkInfo回写: {}", fw.getWatermarkInfo());
+                        }
+                    }
+                    if (needUpdate) {
+                        fileWatermarkMapper.updateById(fw);
+                        log.info("水印存证回写事件关联成功: fileUrl={}, eventId={}, eventNo={}", fileUrl, eventId, eventNo);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("回写水印存证失败: fileUrl={}", fileUrl, e);
+            }
+        }
     }
 
     @Override
@@ -192,21 +286,63 @@ public class WatermarkServiceImpl implements WatermarkService {
         TamperCheckVO result = new TamperCheckVO();
         result.setFileWatermarkId(fileWatermark.getId());
         result.setFileUrl(fileUrl);
-        result.setOriginalMd5(fileWatermark.getWatermarkedMd5());
-        result.setCurrentMd5(currentMd5);
         result.setWatermarkInfo(fileWatermark.getWatermarkInfo());
         result.setVerifyTime(LocalDateTime.now());
+        result.setIsEncrypted(fileWatermark.getIsEncrypted());
+        result.setTargetDeptId(fileWatermark.getTargetDeptId());
 
-        boolean tampered = !currentMd5.equals(fileWatermark.getWatermarkedMd5());
-        result.setTampered(tampered);
+        boolean tampered;
+        String compareMd5;
+        String message;
 
-        if (tampered) {
-            result.setMessage("检测到文件被篡改！原始MD5与当前MD5不匹配");
-            fileWatermark.setTamperVerified(2);
+        if (fileWatermark.getIsEncrypted() != null && fileWatermark.getIsEncrypted() == 1) {
+            compareMd5 = StrUtil.isNotBlank(fileWatermark.getStoredMd5())
+                    ? fileWatermark.getStoredMd5() : fileWatermark.getWatermarkedMd5();
+            boolean fileTampered = !currentMd5.equals(compareMd5);
+            result.setStoredMd5(fileWatermark.getStoredMd5());
+            result.setCurrentMd5(currentMd5);
+            result.setOriginalMd5(fileWatermark.getWatermarkedMd5());
+
+            if (fileTampered) {
+                tampered = true;
+                message = "检测到加密文件被篡改（落盘MD5不匹配）";
+            } else {
+                try {
+                    DigitalEnvelopeDTO envelope = objectMapper.readValue(currentBytes, DigitalEnvelopeDTO.class);
+                    Long deptId = fileWatermark.getTargetDeptId();
+                    if (deptId == null) {
+                        tampered = false;
+                        message = "加密文件落盘完整，内容完整性未校验（缺少目标部门信息）";
+                    } else {
+                        byte[] plainBytes = encryptionService.openDigitalEnvelope(envelope, deptId);
+                        String plainMd5 = SecureUtil.md5(plainBytes);
+                        boolean contentTampered = !plainMd5.equals(fileWatermark.getWatermarkedMd5());
+                        tampered = contentTampered;
+                        message = contentTampered
+                                ? "检测到加密文件内容被篡改（解密后MD5与水印存证不匹配）"
+                                : "加密文件完整性验证通过（落盘与解密内容均未篡改）";
+                        result.setDecryptedMd5(plainMd5);
+                    }
+                } catch (Exception e) {
+                    log.error("加密文件内容校验失败", e);
+                    tampered = false;
+                    message = "加密文件落盘完整，内容校验失败（" + e.getMessage() + "）";
+                }
+            }
         } else {
-            result.setMessage("文件完整性验证通过，未检测到篡改");
-            fileWatermark.setTamperVerified(1);
+            compareMd5 = fileWatermark.getWatermarkedMd5();
+            result.setOriginalMd5(compareMd5);
+            result.setCurrentMd5(currentMd5);
+            tampered = !currentMd5.equals(compareMd5);
+            message = tampered
+                    ? "检测到文件被篡改！原始MD5与当前MD5不匹配"
+                    : "文件完整性验证通过，未检测到篡改";
         }
+
+        result.setTampered(tampered);
+        result.setMessage(message);
+
+        fileWatermark.setTamperVerified(tampered ? 2 : 1);
         fileWatermark.setTamperVerifyTime(LocalDateTime.now());
         fileWatermarkMapper.updateById(fileWatermark);
 
@@ -224,6 +360,10 @@ public class WatermarkServiceImpl implements WatermarkService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<FileWatermark>()
                         .eq(FileWatermark::getEventId, eventId)
         );
+
+        if (watermarkList.isEmpty()) {
+            log.info("事件{}暂无水印存证记录，尝试按事件图片/视频URL关联匹配", eventId);
+        }
 
         List<TamperCheckVO> results = new ArrayList<>();
         for (FileWatermark watermark : watermarkList) {

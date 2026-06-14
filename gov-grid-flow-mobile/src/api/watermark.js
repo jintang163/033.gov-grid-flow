@@ -55,9 +55,18 @@ export const checkEventFilesTamper = (eventId) => {
   })
 }
 
+export const linkEventToWatermark = (eventId, eventNo, fileUrls) => {
+  return request({
+    url: '/watermark/link-event',
+    method: 'post',
+    data: { eventId, eventNo, fileUrls }
+  })
+}
+
 export default {
   uploadWithWatermark,
   batchUploadWithWatermark,
   checkTamper,
-  checkEventFilesTamper
+  checkEventFilesTamper,
+  linkEventToWatermark
 }

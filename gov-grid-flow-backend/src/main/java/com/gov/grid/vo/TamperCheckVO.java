@@ -20,9 +20,17 @@ public class TamperCheckVO implements Serializable {
 
     private String currentMd5;
 
+    private String storedMd5;
+
+    private String decryptedMd5;
+
     private String watermarkInfo;
 
     private LocalDateTime verifyTime;
 
     private String message;
+
+    private Integer isEncrypted;
+
+    private Long targetDeptId;
 }

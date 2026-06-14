@@ -27,6 +27,7 @@ import com.gov.grid.service.EventService;
 import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.service.EventAnalysisService;
 import com.gov.grid.service.ImageComparisonService;
+import com.gov.grid.service.WatermarkService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
 import com.gov.grid.vo.WarningInfoVO;
@@ -63,6 +64,7 @@ public class EventServiceImpl implements EventService {
     private final EventSyncProducer eventSyncProducer;
     private final EventUrgeService eventUrgeService;
     private final EventAnalysisService eventAnalysisService;
+    private final WatermarkService watermarkService;
 
     @Override
     public EventInfo reportEvent(EventReportDTO dto, Long userId) {
@@ -320,6 +322,24 @@ public class EventServiceImpl implements EventService {
             eventAnalysisService.analyzeAndMarkRecurrence(eventInfo.getId());
         } catch (Exception e) {
             log.warn("[EventService] 事件关联分析标记失败，事件ID：{}", eventInfo.getId(), e);
+        }
+
+        try {
+            java.util.List<String> allUrls = new java.util.ArrayList<>();
+            if (StrUtil.isNotBlank(eventInfo.getImages())) {
+                allUrls.addAll(Arrays.asList(eventInfo.getImages().split(",")));
+            }
+            if (StrUtil.isNotBlank(eventInfo.getVideos())) {
+                allUrls.addAll(Arrays.asList(eventInfo.getVideos().split(",")));
+            }
+            if (StrUtil.isNotBlank(eventInfo.getVoiceUrl())) {
+                allUrls.add(eventInfo.getVoiceUrl());
+            }
+            if (!allUrls.isEmpty()) {
+                watermarkService.linkEventToFiles(eventInfo.getId(), eventInfo.getEventNo(), allUrls);
+            }
+        } catch (Exception e) {
+            log.warn("[EventService] 水印存证回写事件关联失败，事件ID：{}", eventInfo.getId(), e);
         }
 
         return eventInfo;

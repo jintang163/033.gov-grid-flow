@@ -1,6 +1,8 @@
 package com.gov.grid.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.symmetric.AES;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.dto.DigitalEnvelopeDTO;
@@ -9,14 +11,17 @@ import com.gov.grid.mapper.EncryptionKeyMapper;
 import com.gov.grid.service.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.SecureRandom;
@@ -25,6 +30,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -38,6 +44,70 @@ public class EncryptionServiceImpl implements EncryptionService {
 
     private final EncryptionKeyMapper encryptionKeyMapper;
     private final ObjectMapper objectMapper;
+
+    @Value("${encryption.master-key:gov-grid-flow-master-key-32bytes!!!}")
+    private String masterKey;
+
+    private AES masterAes;
+
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = SecureUtil.md5(masterKey).substring(0, 16).getBytes(StandardCharsets.UTF_8);
+        masterAes = SecureUtil.aes(keyBytes);
+        log.info("加密服务初始化完成，主密钥已加载");
+    }
+
+    @Override
+    public String encryptPrivateKey(String rawPrivateKey) {
+        if (StrUtil.isBlank(rawPrivateKey)) {
+            return rawPrivateKey;
+        }
+        return masterAes.encryptBase64(rawPrivateKey);
+    }
+
+    @Override
+    public String decryptPrivateKey(String encryptedPrivateKey) {
+        if (StrUtil.isBlank(encryptedPrivateKey)) {
+            return encryptedPrivateKey;
+        }
+        try {
+            return masterAes.decryptStr(encryptedPrivateKey);
+        } catch (Exception e) {
+            log.warn("私钥解密失败，尝试作为明文使用", e);
+            return encryptedPrivateKey;
+        }
+    }
+
+    @Override
+    public void migrateEncryptedKeys() {
+        try {
+            List<EncryptionKey> allKeys = encryptionKeyMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<EncryptionKey>()
+                            .eq(EncryptionKey::getKeyEncrypted, 0)
+                            .in(EncryptionKey::getKeyType, "RSA_PRIVATE", "AES")
+            );
+            if (allKeys.isEmpty()) {
+                log.info("无需迁移，所有敏感密钥已加密存储");
+                return;
+            }
+            int migratedCount = 0;
+            for (EncryptionKey key : allKeys) {
+                try {
+                    String encryptedContent = encryptPrivateKey(key.getKeyContent());
+                    key.setKeyContent(encryptedContent);
+                    key.setKeyEncrypted(1);
+                    encryptionKeyMapper.updateById(key);
+                    migratedCount++;
+                    log.info("密钥迁移成功：{} ({}), ID: {}", key.getKeyName(), key.getKeyType(), key.getId());
+                } catch (Exception e) {
+                    log.error("密钥迁移失败：{}, ID: {}", key.getKeyName(), key.getId(), e);
+                }
+            }
+            log.info("敏感密钥加密迁移完成，共迁移 {} 个密钥", migratedCount);
+        } catch (Exception e) {
+            log.error("密钥迁移任务执行失败", e);
+        }
+    }
 
     @Override
     public byte[] generateAesKey() {
@@ -213,10 +283,15 @@ public class EncryptionServiceImpl implements EncryptionService {
             throw new BusinessException("未找到部门" + deptId + "的私钥，您无权解密此文件");
         }
 
+        String rawPrivateKey = privateKey.getKeyContent();
+        if (privateKey.getKeyEncrypted() != null && privateKey.getKeyEncrypted() == 1) {
+            rawPrivateKey = decryptPrivateKey(rawPrivateKey);
+        }
+
         byte[] encryptedData = Base64.getDecoder().decode(envelope.getEncryptedData());
         byte[] encryptedAesKey = Base64.getDecoder().decode(envelope.getEncryptedAesKey());
 
-        byte[] aesKey = decryptWithRsa(encryptedAesKey, privateKey.getKeyContent());
+        byte[] aesKey = decryptWithRsa(encryptedAesKey, rawPrivateKey);
         byte[] originalData = decryptWithAes(encryptedData, aesKey);
 
         log.info("数字信封解密成功，部门ID：{}，数据大小：{}字节", deptId, originalData.length);

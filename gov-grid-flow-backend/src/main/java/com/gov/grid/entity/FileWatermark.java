@@ -24,11 +24,20 @@ public class FileWatermark extends BaseEntity {
     @TableField("watermarked_md5")
     private String watermarkedMd5;
 
+    @TableField("stored_md5")
+    private String storedMd5;
+
+    @TableField("decrypted_md5")
+    private String decryptedMd5;
+
     @TableField("watermark_info")
     private String watermarkInfo;
 
     @TableField("event_id")
     private Long eventId;
+
+    @TableField("event_no")
+    private String eventNo;
 
     @TableField("reporter_id")
     private Long reporterId;
@@ -38,6 +47,9 @@ public class FileWatermark extends BaseEntity {
 
     @TableField("encryption_key_id")
     private Long encryptionKeyId;
+
+    @TableField("target_dept_id")
+    private Long targetDeptId;
 
     @TableField("tamper_verified")
     private Integer tamperVerified;

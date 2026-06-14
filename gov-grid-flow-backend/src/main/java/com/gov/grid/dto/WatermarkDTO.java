@@ -26,4 +26,6 @@ public class WatermarkDTO implements Serializable {
     private Long reporterId;
 
     private Boolean sensitive = false;
+
+    private Long targetDeptId;
 }

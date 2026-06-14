@@ -213,7 +213,10 @@
               </template>
             </van-field>
           </div>
-          <div class="upload-hint">* 图片自动添加水印（上报时间、网格员姓名、事件编号），MD5存证防篡改</div>
+          <div class="upload-hint">
+            * 图片自动添加水印（上报时间、网格员姓名、事件编号），MD5存证防篡改
+            <br />* 视频暂不支持可视化水印叠加，将进行MD5存证并支持加密存储
+          </div>
         </van-cell-group>
 
         <van-cell-group inset title="安全设置" style="margin-top: 12px">
@@ -225,9 +228,19 @@
               </div>
             </template>
           </van-field>
+          <van-field
+            v-if="watermarkInfo.sensitive"
+            v-model="watermarkInfo.targetDeptName"
+            is-link
+            readonly
+            label="目标处置部门"
+            placeholder="请选择可解密查看的处置部门"
+            :rules="watermarkInfo.sensitive ? [{ required: true, message: '请选择目标处置部门' }] : []"
+            @click="showDeptPicker = true"
+          />
           <div class="sensitive-hint" v-if="watermarkInfo.sensitive">
             <van-icon name="info-o" size="12" color="#1989fa" />
-            <span>启用后，图片将使用数字信封加密，仅处置部门可解密查看</span>
+            <span>启用后，附件将使用数字信封加密，仅您选择的「{{ watermarkInfo.targetDeptName || '处置部门' }}」可解密查看</span>
           </div>
         </van-cell-group>
 
@@ -331,6 +344,15 @@
       />
     </van-popup>
 
+    <van-popup v-model:show="showDeptPicker" round position="bottom">
+      <van-picker
+        :columns="deptColumns"
+        title="选择目标处置部门"
+        @confirm="onDeptConfirm"
+        @cancel="showDeptPicker = false"
+      />
+    </van-popup>
+
     <van-tabbar v-model="active" route>
       <van-tabbar-item to="/home" icon="home-o">首页</van-tabbar-item>
       <van-tabbar-item to="/report" icon="add-o">上报</van-tabbar-item>
@@ -344,8 +366,8 @@
 import { reactive, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice } from '@/api'
-import { uploadWithWatermark } from '@/api/watermark'
+import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice, getDeptList } from '@/api'
+import { uploadWithWatermark, linkEventToWatermark } from '@/api/watermark'
 import { addImageWatermark, addVideoWatermark, calculateMD5 } from '@/utils/watermark'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
 import { useOfflineStore, useUserStore } from '@/store'
@@ -369,10 +391,12 @@ onMounted(() => {
   offlineStore.refresh()
   fetchEventTypeList()
   fetchGridList()
+  fetchDeptList()
 })
 const showTypePicker = ref(false)
 const showPriorityPicker = ref(false)
 const showGridPicker = ref(false)
+const showDeptPicker = ref(false)
 const showMap = ref(false)
 const imageList = ref([])
 const videoList = ref([])
@@ -380,6 +404,8 @@ const uploadedImages = ref([])
 const uploadedVideos = ref([])
 const gridList = ref([])
 const gridColumns = ref([])
+const deptList = ref([])
+const deptColumns = ref([])
 
 const nearbyResources = reactive({
   cameras: [],
@@ -394,7 +420,9 @@ const nearbyResources = reactive({
 const watermarkInfo = reactive({
   eventNo: '',
   enabled: true,
-  sensitive: false
+  sensitive: false,
+  targetDeptId: null,
+  targetDeptName: ''
 })
 
 const isRecording = ref(false)
@@ -490,6 +518,39 @@ const fetchGridList = async () => {
   }
 }
 
+const fetchDeptList = async () => {
+  try {
+    const res = await getDeptList()
+    const list = res?.data || res?.rows || []
+    if (list && list.length) {
+      const processDepts = list.filter(d => d.deptType === 'PROCESS' || d.type === '处置' || (d.name && d.name.includes('处置')))
+      const finalList = processDepts.length > 0 ? processDepts : list
+      deptList.value = finalList
+      deptColumns.value = finalList.map((item) => ({
+        text: item.deptName || item.name || item.dept_name,
+        value: item.id || item.deptId || item.dept_id
+      }))
+      if (finalList.length === 1) {
+        watermarkInfo.targetDeptId = finalList[0].id || finalList[0].deptId
+        watermarkInfo.targetDeptName = finalList[0].deptName || finalList[0].name
+      }
+    } else {
+      deptColumns.value = [
+        { text: '城东处置中心', value: 3 },
+        { text: '城西处置中心', value: 4 },
+        { text: '综合执法大队', value: 5 }
+      ]
+    }
+  } catch (e) {
+    console.warn('Load dept list failed, use defaults', e)
+    deptColumns.value = [
+      { text: '城东处置中心', value: 3 },
+      { text: '城西处置中心', value: 4 },
+      { text: '综合执法大队', value: 5 }
+    ]
+  }
+}
+
 const onBack = async () => {
   const hasContent = form.title || form.description || imageList.value.length > 0 || videoList.value.length > 0
   if (hasContent) {
@@ -521,6 +582,12 @@ const onGridConfirm = ({ selectedOptions }) => {
   form.gridId = selectedOptions[0].value
   form.gridName = selectedOptions[0].text
   showGridPicker.value = false
+}
+
+const onDeptConfirm = ({ selectedOptions }) => {
+  watermarkInfo.targetDeptId = selectedOptions[0].value
+  watermarkInfo.targetDeptName = selectedOptions[0].text
+  showDeptPicker.value = false
 }
 
 const getLocation = async () => {
@@ -645,14 +712,15 @@ const afterImageRead = async (file) => {
         watermarkInfo.eventNo,
         null,
         reporterId,
-        watermarkInfo.sensitive
+        watermarkInfo.sensitive,
+        watermarkInfo.sensitive ? watermarkInfo.targetDeptId : null
       )
 
       const data = res.data || {}
       if (data.fileUrl) {
         uploadedImages.value.push(data.fileUrl)
         f.status = 'done'
-        f.message = '已加水印'
+        f.message = watermarkInfo.sensitive ? '已加水印+加密' : '已加水印'
       } else {
         f.status = 'failed'
         f.message = '上传失败'
@@ -705,14 +773,15 @@ const afterVideoRead = async (file) => {
         watermarkInfo.eventNo,
         null,
         reporterId,
-        watermarkInfo.sensitive
+        watermarkInfo.sensitive,
+        watermarkInfo.sensitive ? watermarkInfo.targetDeptId : null
       )
 
       const data = res.data || {}
       if (data.fileUrl) {
         uploadedVideos.value.push(data.fileUrl)
         f.status = 'done'
-        f.message = '已存证'
+        f.message = watermarkInfo.sensitive ? '已存证+加密' : '已存证'
       } else {
         f.status = 'failed'
         f.message = '上传失败'
@@ -859,6 +928,10 @@ const onReset = () => {
   voiceUrl.value = ''
   voiceFile.value = ''
   showMap.value = false
+  watermarkInfo.eventNo = ''
+  watermarkInfo.sensitive = false
+  watermarkInfo.targetDeptId = null
+  watermarkInfo.targetDeptName = ''
   formRef.value && formRef.value.resetValidation()
 }
 
@@ -960,11 +1033,18 @@ const onSubmit = async () => {
       res = await reportEvent(submitData)
     }
 
-    offlineStore.saveEvent({ ...submitData, status: 'synced', serverId: res?.data?.id, syncedAt: Date.now() })
-
+    const eventId = res?.data?.id
     const eventNo = res?.data?.eventNo || res?.data?.id
-    if (eventNo && (uploadedImages.value.length > 0 || uploadedVideos.value.length > 0)) {
-      console.log('[Watermark] 事件编号已生成:', eventNo)
+    offlineStore.saveEvent({ ...submitData, status: 'synced', serverId: eventId, eventNo, syncedAt: Date.now() })
+
+    if (eventId && (uploadedImages.value.length > 0 || uploadedVideos.value.length > 0)) {
+      try {
+        const allUrls = [...uploadedImages.value, ...uploadedVideos.value]
+        await linkEventToWatermark(eventId, eventNo, allUrls)
+        console.log('[Watermark] 水印存证回写成功: eventId=', eventId, ', eventNo=', eventNo, ', urls=', allUrls.length)
+      } catch (linkErr) {
+        console.error('[Watermark] 水印存证回写失败:', linkErr)
+      }
     }
 
     showToast({ type: 'success', message: '上报成功' })

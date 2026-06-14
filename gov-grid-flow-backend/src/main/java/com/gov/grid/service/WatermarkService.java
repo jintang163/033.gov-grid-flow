@@ -19,5 +19,7 @@ public interface WatermarkService {
     WatermarkResultVO uploadWithWatermark(MultipartFile file, String reportTime,
                                            String reporterName, String eventNo,
                                            Long eventId, Long reporterId,
-                                           Boolean sensitive) throws IOException;
+                                           Boolean sensitive, Long targetDeptId) throws IOException;
+
+    void linkEventToFiles(Long eventId, String eventNo, List<String> fileUrls);
 }

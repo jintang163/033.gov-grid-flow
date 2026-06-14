@@ -20,4 +20,8 @@ public class WatermarkResultVO implements Serializable {
     private Boolean tampered;
 
     private String tamperMessage;
+
+    private Boolean watermarkApplied;
+
+    private Boolean encrypted;
 }

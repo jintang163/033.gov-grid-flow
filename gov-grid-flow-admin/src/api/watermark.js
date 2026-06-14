@@ -55,9 +55,21 @@ export const checkEventFilesTamper = (eventId) => {
   })
 }
 
+export const getDecryptDownloadUrl = (filename) => {
+  return `/file/decrypt/${filename}`
+}
+
+export const decryptAndDownload = async (fileUrl, deptId) => {
+  const filename = fileUrl.substring(fileUrl.lastIndexOf('/') + 1)
+  const url = `/file/decrypt/${filename}?deptId=${deptId}`
+  window.open(url, '_blank')
+}
+
 export default {
   uploadWithWatermark,
   batchUploadWithWatermark,
   checkTamper,
-  checkEventFilesTamper
+  checkEventFilesTamper,
+  getDecryptDownloadUrl,
+  decryptAndDownload
 }

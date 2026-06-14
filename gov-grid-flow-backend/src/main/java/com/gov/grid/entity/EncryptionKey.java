@@ -22,6 +22,9 @@ public class EncryptionKey extends BaseEntity {
     @TableField("key_content")
     private String keyContent;
 
+    @TableField("key_encrypted")
+    private Integer keyEncrypted;
+
     @TableField("dept_id")
     private Long deptId;
 

@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @Api(tags = "水印管理")
 @RestController
@@ -30,10 +31,11 @@ public class WatermarkController {
             @RequestParam(value = "eventNo", required = false) String eventNo,
             @RequestParam(value = "eventId", required = false) Long eventId,
             @RequestParam(value = "reporterId", required = false) Long reporterId,
-            @RequestParam(value = "sensitive", required = false, defaultValue = "false") Boolean sensitive) throws IOException {
+            @RequestParam(value = "sensitive", required = false, defaultValue = "false") Boolean sensitive,
+            @RequestParam(value = "targetDeptId", required = false) Long targetDeptId) throws IOException {
 
         WatermarkResultVO result = watermarkService.uploadWithWatermark(
-                file, reportTime, reporterName, eventNo, eventId, reporterId, sensitive
+                file, reportTime, reporterName, eventNo, eventId, reporterId, sensitive, targetDeptId
         );
         return Result.success("水印上传成功", result);
     }
@@ -47,16 +49,28 @@ public class WatermarkController {
             @RequestParam(value = "eventNo", required = false) String eventNo,
             @RequestParam(value = "eventId", required = false) Long eventId,
             @RequestParam(value = "reporterId", required = false) Long reporterId,
-            @RequestParam(value = "sensitive", required = false, defaultValue = "false") Boolean sensitive) throws IOException {
+            @RequestParam(value = "sensitive", required = false, defaultValue = "false") Boolean sensitive,
+            @RequestParam(value = "targetDeptId", required = false) Long targetDeptId) throws IOException {
 
         List<WatermarkResultVO> results = new java.util.ArrayList<>();
         for (MultipartFile file : files) {
             WatermarkResultVO result = watermarkService.uploadWithWatermark(
-                    file, reportTime, reporterName, eventNo, eventId, reporterId, sensitive
+                    file, reportTime, reporterName, eventNo, eventId, reporterId, sensitive, targetDeptId
             );
             results.add(result);
         }
         return Result.success("批量水印上传成功", results);
+    }
+
+    @ApiOperation("回写水印存证与事件关联（事件创建后调用）")
+    @PostMapping("/link-event")
+    public Result<Void> linkEventToFiles(@RequestBody Map<String, Object> params) {
+        Long eventId = params.get("eventId") != null ? Long.valueOf(params.get("eventId").toString()) : null;
+        String eventNo = params.get("eventNo") != null ? params.get("eventNo").toString() : null;
+        @SuppressWarnings("unchecked")
+        List<String> fileUrls = (List<String>) params.get("fileUrls");
+        watermarkService.linkEventToFiles(eventId, eventNo, fileUrls);
+        return Result.success("事件关联回写成功");
     }
 
     @ApiOperation("检测文件是否被篡改")

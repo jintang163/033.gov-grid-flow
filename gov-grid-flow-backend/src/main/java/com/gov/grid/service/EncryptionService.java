@@ -20,4 +20,10 @@ public interface EncryptionService {
     byte[] openDigitalEnvelope(DigitalEnvelopeDTO envelope, Long deptId) throws GeneralSecurityException, IOException;
 
     byte[] generateAesKey();
+
+    String encryptPrivateKey(String rawPrivateKey);
+
+    String decryptPrivateKey(String encryptedPrivateKey);
+
+    void migrateEncryptedKeys();
 }

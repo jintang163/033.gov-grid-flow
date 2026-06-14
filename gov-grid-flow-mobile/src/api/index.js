@@ -200,6 +200,13 @@ export const getGridList = () => {
   })
 }
 
+export const getDeptList = () => {
+  return request({
+    url: '/sys/dept/list',
+    method: 'get'
+  })
+}
+
 export const getMemberList = (gridId) => {
   return request({
     url: '/grid/members',
