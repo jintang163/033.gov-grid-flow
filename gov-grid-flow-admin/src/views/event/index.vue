@@ -73,6 +73,9 @@
         <el-button type="success" @click="handleExport">
           <el-icon><Download /></el-icon>导出
         </el-button>
+        <el-button type="warning" @click="handleNlpTrain">
+          <el-icon><MagicStick /></el-icon>NLP模型训练
+        </el-button>
       </div>
 
       <el-table :data="tableData" border stripe v-loading="loading" style="margin-top: 16px">
@@ -558,6 +561,51 @@
           </el-form-item>
         </template>
         <template v-else-if="processType === 'assign'">
+          <div v-if="nlpDispatchResult" class="nlp-dispatch-panel">
+            <div class="nlp-panel-header">
+              <el-icon color="#1989fa" :size="20"><MagicStick /></el-icon>
+              <span class="nlp-panel-title">AI智能推荐分派</span>
+              <el-tag :type="nlpDispatchResult.autoDispatch ? 'success' : 'warning'" size="small" effect="dark">
+                {{ nlpDispatchResult.autoDispatch ? '置信度≥80%' : '需人工确认' }}
+              </el-tag>
+            </div>
+            <div class="nlp-panel-body">
+              <div class="nlp-dept-row">
+                <span class="nlp-dept-label">推荐部门：</span>
+                <span class="nlp-dept-value">{{ nlpDispatchResult.departmentName }}</span>
+                <el-tag size="mini" type="primary" effect="plain" style="margin-left: 8px">
+                  {{ nlpDispatchResult.method === 'rule' ? '规则匹配' : nlpDispatchResult.method === 'model' ? 'BERT模型' : nlpDispatchResult.method }}
+                </el-tag>
+              </div>
+              <div class="nlp-confidence-row">
+                <span>置信度：{{ (nlpDispatchResult.confidence * 100).toFixed(1) }}%</span>
+                <el-progress
+                  :percentage="parseFloat((nlpDispatchResult.confidence * 100).toFixed(1))"
+                  :stroke-width="12"
+                  :color="nlpDispatchResult.confidence >= 0.8 ? '#67C23A' : '#E6A23C'"
+                  style="flex: 1; margin-left: 12px"
+                />
+              </div>
+              <div v-if="nlpDispatchResult.allScores && nlpDispatchResult.allScores.length > 0" class="nlp-scores-section">
+                <div class="nlp-scores-title">Top-3 部门概率分布</div>
+                <div v-for="score in nlpDispatchResult.allScores.slice(0, 3)" :key="score.departmentCode" class="nlp-score-item">
+                  <span class="score-name">{{ score.departmentName }}</span>
+                  <el-progress
+                    :percentage="parseFloat((score.score * 100).toFixed(1))"
+                    :stroke-width="10"
+                    :show-text="true"
+                    style="flex: 1"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="nlp-panel-actions">
+              <el-button type="primary" @click="adoptNlpDispatch" :loading="nlpAdopting">
+                <el-icon><Check /></el-icon> 一键采纳推荐
+              </el-button>
+            </div>
+          </div>
+          <el-divider v-if="nlpDispatchResult">手动分派</el-divider>
           <el-form-item label="处置员" prop="assigneeId">
             <el-select v-model="processForm.assigneeId" placeholder="请选择处置员" filterable style="width: 100%">
               <el-option
@@ -742,7 +790,8 @@ import {
   ArrowRight,
   WarningFilled,
   Lock,
-  Unlock
+  Unlock,
+  Check
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -756,7 +805,11 @@ import {
   getProcessDiagram,
   getEventTypeList,
   getNearbyResources,
-  callMember
+  callMember,
+  nlpRecommend,
+  nlpAdoptDispatch,
+  nlpTrainModel,
+  nlpHealthCheck
 } from '@/api/event'
 import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
@@ -846,6 +899,10 @@ const tamperCheckData = reactive({
   results: [],
   hasTampered: false
 })
+
+const nlpDispatchResult = ref(null)
+const nlpAdopting = ref(false)
+const nlpTraining = ref(false)
 
 function getStatusLabel(status) {
   const map = {
@@ -1472,6 +1529,7 @@ async function handleAssign(row) {
   currentEvent.value = row
   processForm.eventId = row.id || row.eventId
   resetProcessForm()
+  nlpDispatchResult.value = null
   try {
     const res = await getGridMembers(row.gridId)
     gridMembers.value = res?.data || res?.rows || []
@@ -1482,7 +1540,58 @@ async function handleAssign(row) {
       { id: 103, name: '处置员C（王工）' }
     ]
   }
+  try {
+    const nlpRes = await nlpRecommend(row.id || row.eventId)
+    if (nlpRes?.data) {
+      nlpDispatchResult.value = nlpRes.data
+    }
+  } catch (e) {
+    console.warn('NLP推荐分派失败', e)
+  }
   processDialogVisible.value = true
+}
+
+async function adoptNlpDispatch() {
+  if (!nlpDispatchResult.value || !currentEvent.value) return
+  nlpAdopting.value = true
+  try {
+    const eventId = currentEvent.value.id || currentEvent.value.eventId
+    await nlpAdoptDispatch(eventId, nlpDispatchResult.value.dispatchRecordId, {
+      deptCode: nlpDispatchResult.value.departmentCode,
+      deptName: nlpDispatchResult.value.departmentName
+    })
+    ElMessage.success('采纳NLP推荐分派成功')
+    processDialogVisible.value = false
+    nlpDispatchResult.value = null
+    fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '采纳失败')
+  } finally {
+    nlpAdopting.value = false
+  }
+}
+
+async function handleNlpTrain() {
+  try {
+    await ElMessageBox.confirm(
+      '确认触发NLP模型微调训练？训练将基于历史分派记录进行，可能需要较长时间。',
+      'NLP模型训练',
+      { confirmButtonText: '开始训练', cancelButtonText: '取消', type: 'warning' }
+    )
+    nlpTraining.value = true
+    const res = await nlpTrainModel({ limit: 5000, epochs: 3, batchSize: 16, learningRate: 2e-5 })
+    if (res?.data?.success) {
+      ElMessage.success('模型训练完成')
+    } else {
+      ElMessage.warning(res?.data?.message || '训练完成，请查看详情')
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.message || '训练失败')
+    }
+  } finally {
+    nlpTraining.value = false
+  }
 }
 
 function handleProcess(row) {
@@ -1733,6 +1842,88 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.nlp-dispatch-panel {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e8f4fd 100%);
+  border: 1px solid #b3d8ff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+
+  .nlp-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .nlp-panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+      flex: 1;
+    }
+  }
+
+  .nlp-panel-body {
+    .nlp-dept-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+
+      .nlp-dept-label {
+        font-size: 14px;
+        color: #909399;
+      }
+
+      .nlp-dept-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #409EFF;
+      }
+    }
+
+    .nlp-confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #606266;
+    }
+
+    .nlp-scores-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #dcdfe6;
+
+      .nlp-scores-title {
+        font-size: 13px;
+        color: #909399;
+        margin-bottom: 8px;
+      }
+
+      .nlp-score-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+
+        .score-name {
+          font-size: 13px;
+          color: #606266;
+          width: 80px;
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+
+  .nlp-panel-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
 .event-page {
   .search-form {
     margin-bottom: 0;

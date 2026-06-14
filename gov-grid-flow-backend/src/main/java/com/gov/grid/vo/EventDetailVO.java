@@ -7,6 +7,7 @@ import com.gov.grid.entity.EventProcess;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class EventDetailVO {
@@ -18,5 +19,9 @@ public class EventDetailVO {
     private EventEvaluation evaluation;
 
     private List<ImageComparisonResultVO> comparisonList;
+
+    private NlpDispatchResultVO dispatchRecommendation;
+
+    private List<Map<String, Object>> dispatchHistory;
 }
 

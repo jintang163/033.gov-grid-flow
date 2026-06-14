@@ -101,6 +101,16 @@ urge:
   default-warning-ratio: 0.20
   escalate-after-hours: 24
 
+nlp:
+  service:
+    url: http://localhost:8001
+  dispatch:
+    enabled: true
+    auto-dispatch-enabled: true
+    confidence-threshold: 0.8
+    auto-train-enabled: false
+    auto-train-cron: "0 0 2 * * ?"
+
 logging:
   level:
     root: info

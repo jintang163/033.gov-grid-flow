@@ -149,3 +149,57 @@ export const reportMemberLocation = (data) => {
     data
   })
 }
+
+// ===== NLP智能分派 =====
+export const nlpClassify = (data) => {
+  return request({
+    url: '/nlp/dispatch/classify',
+    method: 'post',
+    data
+  })
+}
+
+export const nlpRecommend = (eventId) => {
+  return request({
+    url: `/nlp/dispatch/recommend/${eventId}`,
+    method: 'post'
+  })
+}
+
+export const nlpAdoptDispatch = (eventId, dispatchRecordId, data) => {
+  return request({
+    url: `/nlp/dispatch/adopt/${eventId}/${dispatchRecordId}`,
+    method: 'post',
+    data
+  })
+}
+
+export const nlpRejectDispatch = (eventId, dispatchRecordId, data) => {
+  return request({
+    url: `/nlp/dispatch/reject/${eventId}/${dispatchRecordId}`,
+    method: 'post',
+    data
+  })
+}
+
+export const getDispatchHistory = (eventId) => {
+  return request({
+    url: `/nlp/dispatch/history/${eventId}`,
+    method: 'get'
+  })
+}
+
+export const nlpTrainModel = (data) => {
+  return request({
+    url: '/nlp/dispatch/train',
+    method: 'post',
+    data
+  })
+}
+
+export const nlpHealthCheck = () => {
+  return request({
+    url: '/nlp/dispatch/health',
+    method: 'get'
+  })
+}

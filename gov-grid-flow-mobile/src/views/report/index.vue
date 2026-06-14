@@ -54,6 +54,36 @@
           />
         </van-cell-group>
 
+        <van-cell-group v-if="nlpRecommendation || nlpClassifying" inset title="AI智能推荐处置部门" style="margin-top: 12px">
+          <div v-if="nlpClassifying" class="nlp-loading">
+            <van-loading size="16px" color="#1989fa" />
+            <span>AI正在分析事件内容...</span>
+          </div>
+          <div v-else-if="nlpRecommendation" class="nlp-recommend-card">
+            <div class="nlp-recommend-header">
+              <van-icon name="guide-o" size="18" color="#1989fa" />
+              <span class="nlp-recommend-label">推荐处置部门</span>
+              <van-tag :type="nlpRecommendation.autoDispatch ? 'success' : 'warning'" size="small" round>
+                {{ nlpRecommendation.autoDispatch ? '高置信度' : '待确认' }}
+              </van-tag>
+            </div>
+            <div class="nlp-recommend-body">
+              <div class="nlp-dept-name">{{ nlpRecommendation.departmentName }}</div>
+              <div class="nlp-confidence">
+                置信度：<span :class="nlpRecommendation.confidence >= 0.8 ? 'high' : 'low'">
+                  {{ (nlpRecommendation.confidence * 100).toFixed(1) }}%
+                </span>
+                <van-tag size="mini" type="primary" plain>{{ nlpRecommendation.method === 'rule' ? '规则匹配' : nlpRecommendation.method === 'model' ? '模型推理' : '混合' }}</van-tag>
+              </div>
+            </div>
+            <div class="nlp-recommend-actions">
+              <van-button size="small" type="primary" round @click="adoptNlpRecommendation">
+                一键采纳
+              </van-button>
+            </div>
+          </div>
+        </van-cell-group>
+
         <van-cell-group inset title="位置信息" style="margin-top: 12px">
           <van-field
             v-model="form.address"
@@ -366,7 +396,7 @@
 import { reactive, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice, getDeptList } from '@/api'
+import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice, getDeptList, nlpClassify } from '@/api'
 import { uploadWithWatermark, linkEventToWatermark } from '@/api/watermark'
 import { addImageWatermark, addVideoWatermark, calculateMD5 } from '@/utils/watermark'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
@@ -435,6 +465,10 @@ let audioChunks = []
 let recordingTimer = null
 const MAX_RECORDING_TIME = 60
 
+const nlpRecommendation = ref(null)
+const nlpClassifying = ref(false)
+let nlpDebounceTimer = null
+
 const form = reactive({
   title: '',
   eventType: '',
@@ -477,7 +511,46 @@ onUnmounted(() => {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop()
   }
+  if (nlpDebounceTimer) {
+    clearTimeout(nlpDebounceTimer)
+  }
 })
+
+watch([() => form.title, () => form.description, () => form.eventType], () => {
+  if (nlpDebounceTimer) clearTimeout(nlpDebounceTimer)
+  nlpDebounceTimer = setTimeout(() => {
+    triggerNlpClassify()
+  }, 800)
+})
+
+const triggerNlpClassify = async () => {
+  if (!form.title || form.title.trim().length < 2) {
+    nlpRecommendation.value = null
+    return
+  }
+  nlpClassifying.value = true
+  try {
+    const res = await nlpClassify({
+      title: form.title,
+      description: form.description || '',
+      eventType: form.eventType || ''
+    })
+    if (res.data) {
+      nlpRecommendation.value = res.data
+    }
+  } catch (e) {
+    console.warn('NLP分类失败', e)
+    nlpRecommendation.value = null
+  } finally {
+    nlpClassifying.value = false
+  }
+}
+
+const adoptNlpRecommendation = () => {
+  if (!nlpRecommendation.value) return
+  watermarkInfo.targetDeptName = nlpRecommendation.value.departmentName
+  showToast({ type: 'success', message: `已采纳推荐：${nlpRecommendation.value.departmentName}` })
+}
 
 watch([() => form.lng, () => form.lat], ([newLng, newLat]) => {
   if (newLng && newLat) {
@@ -1384,6 +1457,71 @@ const onSubmit = async () => {
     color: #969799;
     text-align: center;
     padding: 8px 0;
+  }
+}
+
+.nlp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 16px;
+  font-size: 13px;
+  color: #1989fa;
+}
+
+.nlp-recommend-card {
+  padding: 12px 16px;
+
+  .nlp-recommend-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+
+    .nlp-recommend-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #323233;
+      flex: 1;
+    }
+  }
+
+  .nlp-recommend-body {
+    background: #f0f9ff;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+
+    .nlp-dept-name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1989fa;
+      margin-bottom: 6px;
+    }
+
+    .nlp-confidence {
+      font-size: 12px;
+      color: #646566;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .high {
+        color: #07c160;
+        font-weight: 600;
+      }
+
+      .low {
+        color: #ff976a;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .nlp-recommend-actions {
+    display: flex;
+    justify-content: flex-end;
   }
 }
 </style>

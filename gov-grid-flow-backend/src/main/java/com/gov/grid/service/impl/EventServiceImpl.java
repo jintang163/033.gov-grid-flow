@@ -27,6 +27,7 @@ import com.gov.grid.service.EventService;
 import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.service.EventAnalysisService;
 import com.gov.grid.service.ImageComparisonService;
+import com.gov.grid.service.NlpDispatchService;
 import com.gov.grid.service.WatermarkService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
@@ -65,6 +66,7 @@ public class EventServiceImpl implements EventService {
     private final EventUrgeService eventUrgeService;
     private final EventAnalysisService eventAnalysisService;
     private final WatermarkService watermarkService;
+    private final NlpDispatchService nlpDispatchService;
 
     @Override
     public EventInfo reportEvent(EventReportDTO dto, Long userId) {
@@ -325,6 +327,15 @@ public class EventServiceImpl implements EventService {
         }
 
         try {
+            nlpDispatchService.classifyWithEventId(
+                    eventInfo.getId(), eventInfo.getTitle(),
+                    eventInfo.getDescription(), eventInfo.getEventType()
+            );
+        } catch (Exception e) {
+            log.warn("[EventService] NLP智能分派分类失败，事件ID：{}", eventInfo.getId(), e);
+        }
+
+        try {
             java.util.List<String> allUrls = new java.util.ArrayList<>();
             if (StrUtil.isNotBlank(eventInfo.getImages())) {
                 allUrls.addAll(Arrays.asList(eventInfo.getImages().split(",")));
@@ -447,6 +458,13 @@ public class EventServiceImpl implements EventService {
         vo.setProcessList(processList);
         vo.setEvaluation(evaluation);
         vo.setComparisonList(imageComparisonService.getComparisonHistory(eventId));
+
+        try {
+            vo.setDispatchHistory(nlpDispatchService.getDispatchHistory(eventId));
+        } catch (Exception e) {
+            log.warn("[EventService] 获取NLP分派历史失败，事件ID：{}", eventId, e);
+        }
+
         return vo;
     }
 

@@ -400,7 +400,45 @@
         </template>
 
         <template v-else-if="canAssign">
-          <van-button block round type="primary" size="large" @click="openAssignPopup">
+          <div v-if="nlpDispatch" class="nlp-dispatch-section">
+            <div class="nlp-dispatch-header">
+              <van-icon name="guide-o" size="18" color="#1989fa" />
+              <span class="nlp-dispatch-title">AI智能推荐分派</span>
+              <van-tag :type="nlpDispatch.autoDispatch ? 'success' : 'warning'" size="small" round>
+                {{ nlpDispatch.autoDispatch ? '置信度≥80%' : '需人工确认' }}
+              </van-tag>
+            </div>
+            <div class="nlp-dispatch-body">
+              <div class="nlp-dispatch-dept">
+                <span class="dept-label">推荐部门：</span>
+                <span class="dept-value">{{ nlpDispatch.departmentName }}</span>
+              </div>
+              <div class="nlp-dispatch-confidence">
+                <span>置信度：{{ (nlpDispatch.confidence * 100).toFixed(1) }}%</span>
+                <van-tag size="mini" type="primary" plain>
+                  {{ nlpDispatch.method === 'rule' ? '规则匹配' : nlpDispatch.method === 'model' ? 'BERT模型' : nlpDispatch.method }}
+                </van-tag>
+              </div>
+              <div v-if="nlpDispatch.allScores && nlpDispatch.allScores.length > 0" class="nlp-dispatch-scores">
+                <div v-for="score in nlpDispatch.allScores.slice(0,3)" :key="score.departmentCode" class="score-item">
+                  <span class="score-name">{{ score.departmentName }}</span>
+                  <div class="score-bar-wrap">
+                    <div class="score-bar" :style="{ width: (score.score * 100) + '%' }"></div>
+                  </div>
+                  <span class="score-value">{{ (score.score * 100).toFixed(1) }}%</span>
+                </div>
+              </div>
+            </div>
+            <div class="nlp-dispatch-actions">
+              <van-button size="small" type="primary" round @click="adoptNlpDispatch">
+                一键采纳推荐
+              </van-button>
+              <van-button size="small" plain type="default" round @click="openAssignPopup">
+                手动选择
+              </van-button>
+            </div>
+          </div>
+          <van-button v-else block round type="primary" size="large" @click="openAssignPopup">
             分派任务
           </van-button>
         </template>
@@ -690,7 +728,10 @@ import {
   getNearbyResources,
   callMember,
   uploadFile,
-  compareImages
+  compareImages,
+  nlpRecommend,
+  nlpAdoptDispatch,
+  getDispatchHistory
 } from '@/api'
 import { useUserStore, useVoiceStore } from '@/store'
 import { speak, stop } from '@/utils/tts'
@@ -757,6 +798,9 @@ const nearbyData = reactive({
 })
 const showCallSheet = ref(false)
 const showResourceMap = ref(false)
+
+const nlpDispatch = ref(null)
+const nlpDispatchHistory = ref([])
 
 const statusMap = {
   PENDING: { text: '待受理', tag: 'warning' },
@@ -1010,6 +1054,23 @@ const fetchDetail = async () => {
     if (detail.value.lng && detail.value.lat) {
       await fetchNearbyResources(detail.value.lng, detail.value.lat)
     }
+    if (detail.value.dispatchHistory && detail.value.dispatchHistory.length > 0) {
+      nlpDispatchHistory.value = detail.value.dispatchHistory
+      const latestDispatch = detail.value.dispatchHistory[0]
+      if (latestDispatch && (latestDispatch.status === 'RECOMMENDED' || latestDispatch.status === 'AUTO_DISPATCHED')) {
+        nlpDispatch.value = {
+          departmentCode: latestDispatch.recommendedDeptCode,
+          departmentName: latestDispatch.recommendedDeptName,
+          confidence: latestDispatch.confidence,
+          autoDispatch: latestDispatch.autoDispatch === 1,
+          method: latestDispatch.dispatchMethod,
+          dispatchRecordId: latestDispatch.id,
+          allScores: []
+        }
+      }
+    } else {
+      fetchNlpRecommendation()
+    }
   } catch (e) {
     console.warn('Load event detail failed, using mock data', e)
     detail.value = getMockDetail()
@@ -1035,6 +1096,46 @@ async function fetchNearbyResources(lng, lat) {
     console.warn('周边资源查询失败', e)
   } finally {
     nearbyLoading.value = false
+  }
+}
+
+async function fetchNlpRecommendation() {
+  if (!detail.value || !canAssign.value) return
+  try {
+    const res = await nlpRecommend(route.params.id)
+    if (res.data) {
+      nlpDispatch.value = res.data
+    }
+  } catch (e) {
+    console.warn('NLP推荐分派失败', e)
+  }
+}
+
+async function adoptNlpDispatch() {
+  if (!nlpDispatch.value || !detail.value) return
+  try {
+    await showConfirmDialog({
+      title: '确认采纳',
+      message: `确认将事件分派给「${nlpDispatch.value.departmentName}」？`
+    })
+    const dispatchRecordId = nlpDispatch.value.dispatchRecordId
+    if (dispatchRecordId) {
+      await nlpAdoptDispatch(detail.value.id || route.params.id, dispatchRecordId, {
+        deptCode: nlpDispatch.value.departmentCode,
+        deptName: nlpDispatch.value.departmentName
+      })
+    } else {
+      await assignEvent({
+        eventId: detail.value.id || route.params.id,
+        handlerId: nlpDispatch.value.departmentCode,
+        handlerName: nlpDispatch.value.departmentName
+      })
+    }
+    showToast({ type: 'success', message: '采纳推荐分派成功' })
+    nlpDispatch.value = null
+    await fetchDetail()
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
   }
 }
 
@@ -1923,6 +2024,106 @@ onUnmounted(() => {
   bottom: 0;
   background: rgba(247, 248, 250, 0.95);
   backdrop-filter: blur(8px);
+}
+
+.nlp-dispatch-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(25, 137, 250, 0.1);
+  border: 1px solid #e6f7ff;
+
+  .nlp-dispatch-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+
+    .nlp-dispatch-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #323233;
+      flex: 1;
+    }
+  }
+
+  .nlp-dispatch-body {
+    background: #f0f9ff;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+
+    .nlp-dispatch-dept {
+      margin-bottom: 8px;
+
+      .dept-label {
+        font-size: 13px;
+        color: #969799;
+      }
+
+      .dept-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1989fa;
+      }
+    }
+
+    .nlp-dispatch-confidence {
+      font-size: 12px;
+      color: #646566;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .nlp-dispatch-scores {
+      margin-top: 8px;
+
+      .score-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+
+        .score-name {
+          font-size: 12px;
+          color: #646566;
+          width: 70px;
+          flex-shrink: 0;
+        }
+
+        .score-bar-wrap {
+          flex: 1;
+          height: 6px;
+          background: #e8f7ef;
+          border-radius: 3px;
+          overflow: hidden;
+
+          .score-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #1989fa, #64b5f6);
+            border-radius: 3px;
+            transition: width 0.3s;
+          }
+        }
+
+        .score-value {
+          font-size: 12px;
+          color: #323233;
+          width: 44px;
+          text-align: right;
+        }
+      }
+    }
+  }
+
+  .nlp-dispatch-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
 }
 
 .bottom-placeholder {

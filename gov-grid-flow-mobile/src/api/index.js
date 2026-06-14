@@ -310,3 +310,41 @@ export const getNewTodoSince = (lastTime) => {
     params: { since: lastTime }
   })
 }
+
+export const nlpClassify = (data) => {
+  return request({
+    url: '/nlp/dispatch/classify',
+    method: 'post',
+    data
+  })
+}
+
+export const nlpRecommend = (eventId) => {
+  return request({
+    url: `/nlp/dispatch/recommend/${eventId}`,
+    method: 'post'
+  })
+}
+
+export const nlpAdoptDispatch = (eventId, dispatchRecordId, data) => {
+  return request({
+    url: `/nlp/dispatch/adopt/${eventId}/${dispatchRecordId}`,
+    method: 'post',
+    data
+  })
+}
+
+export const nlpRejectDispatch = (eventId, dispatchRecordId, data) => {
+  return request({
+    url: `/nlp/dispatch/reject/${eventId}/${dispatchRecordId}`,
+    method: 'post',
+    data
+  })
+}
+
+export const getDispatchHistory = (eventId) => {
+  return request({
+    url: `/nlp/dispatch/history/${eventId}`,
+    method: 'get'
+  })
+}
