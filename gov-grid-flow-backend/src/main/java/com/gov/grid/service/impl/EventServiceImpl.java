@@ -29,6 +29,7 @@ import com.gov.grid.service.EventAnalysisService;
 import com.gov.grid.service.ImageComparisonService;
 import com.gov.grid.service.NlpDispatchService;
 import com.gov.grid.service.WatermarkService;
+import com.gov.grid.service.BlockchainEvidenceService;
 import com.gov.grid.workflow.WorkflowService;
 import com.gov.grid.vo.EventDetailVO;
 import com.gov.grid.vo.WarningInfoVO;
@@ -67,6 +68,7 @@ public class EventServiceImpl implements EventService {
     private final EventAnalysisService eventAnalysisService;
     private final WatermarkService watermarkService;
     private final NlpDispatchService nlpDispatchService;
+    private final BlockchainEvidenceService blockchainEvidenceService;
 
     @Override
     public EventInfo reportEvent(EventReportDTO dto, Long userId) {
@@ -351,6 +353,19 @@ public class EventServiceImpl implements EventService {
             }
         } catch (Exception e) {
             log.warn("[EventService] 水印存证回写事件关联失败，事件ID：{}", eventInfo.getId(), e);
+        }
+
+        try {
+            Integer blockchainEnabled = dto.getBlockchainEnabled();
+            boolean needBlockchain = blockchainEnabled != null && blockchainEnabled == 1;
+            if (!needBlockchain) {
+                needBlockchain = blockchainEvidenceService.isHighRiskEventType(eventInfo.getEventType());
+            }
+            if (needBlockchain) {
+                blockchainEvidenceService.createEvidence(eventInfo.getId());
+            }
+        } catch (Exception e) {
+            log.warn("[EventService] 区块链存证失败，事件ID：{}", eventInfo.getId(), e);
         }
 
         return eventInfo;

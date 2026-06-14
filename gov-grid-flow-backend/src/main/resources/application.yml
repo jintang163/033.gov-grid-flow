@@ -111,6 +111,13 @@ nlp:
     auto-train-enabled: true
     auto-train-cron: "0 0 2 * * ?"
 
+blockchain:
+  mock: true
+  chain-name: 司法联盟链
+  node-url: ""
+  contract-address: ""
+  private-key: ""
+
 logging:
   level:
     root: info

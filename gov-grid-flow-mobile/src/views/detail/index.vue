@@ -135,6 +135,55 @@
       </div>
 
       <div class="section">
+        <div class="section-title">
+          区块链存证
+          <van-tag v-if="blockchainEvidence" type="success" size="mini" round>已存证</van-tag>
+          <van-tag v-else type="default" size="mini" plain>未存证</van-tag>
+        </div>
+        <van-cell-group inset>
+          <template v-if="blockchainEvidence">
+            <van-cell title="存证编号" :value="blockchainEvidence.evidenceNo" is-link @click="openEvidenceDetail" />
+            <van-cell title="存证链" :value="blockchainEvidence.chainType" />
+            <van-cell title="存证状态">
+              <template #value>
+                <van-tag :type="blockchainEvidence.status === 'SUCCESS' ? 'success' : 'warning'" size="small">
+                  {{ blockchainEvidence.status === 'SUCCESS' ? '上链成功' : '处理中' }}
+                </van-tag>
+              </template>
+            </van-cell>
+            <van-cell title="核验状态">
+              <template #value>
+                <van-tag :type="blockchainEvidence.verified === 1 ? 'success' : 'default'" size="small">
+                  {{ blockchainEvidence.verified === 1 ? '已核验' : '待核验' }}
+                </van-tag>
+              </template>
+            </van-cell>
+            <div class="evidence-actions">
+              <van-button size="small" type="primary" plain icon="scan" @click="onVerifyEvidence" :loading="verifyingEvidence">
+                链上核验
+              </van-button>
+              <van-button size="small" type="success" icon="description" @click="openEvidenceDetail">
+                查看证书
+              </van-button>
+            </div>
+          </template>
+          <template v-else>
+            <van-cell title="存证说明">
+              <template #value>
+                <span class="evidence-empty-text">暂无存证记录</span>
+              </template>
+            </van-cell>
+            <van-cell title="存证作用" label="图片、视频、GPS哈希上链，司法联盟链存证防篡改" />
+            <div class="evidence-create-btn">
+              <van-button type="primary" icon="shield" :loading="blockchainLoading" @click="onCreateEvidence">
+                立即存证
+              </van-button>
+            </div>
+          </template>
+        </van-cell-group>
+      </div>
+
+      <div class="section">
         <div class="section-title">上报人信息</div>
         <van-cell-group inset>
           <van-cell title="上报方式">
@@ -695,6 +744,100 @@
       </div>
     </van-popup>
 
+    <!-- 区块链存证证书详情 -->
+    <van-popup v-model:show="showEvidenceDialog" round position="bottom" :style="{ height: '90%' }">
+      <div class="evidence-cert-container">
+        <div class="cert-header">
+          <div class="cert-title">
+            <van-icon name="shield-o" size="24" color="#07c160" />
+            <span>司法联盟链存证证书</span>
+          </div>
+          <van-icon name="cross" size="22" @click="showEvidenceDialog = false" />
+        </div>
+
+        <div class="cert-body" v-if="blockchainEvidence">
+          <div class="cert-qr-section">
+            <div class="qr-code-wrapper">
+              <div class="qr-code-placeholder">
+                <van-icon name="scan" size="48" color="#07c160" />
+                <div class="qr-text">扫描核验</div>
+              </div>
+            </div>
+            <div class="cert-no">证书编号：{{ blockchainEvidence.evidenceNo }}</div>
+            <div class="cert-status">
+              <van-tag type="success" size="medium" round>
+                {{ blockchainEvidence.status === 'SUCCESS' ? '上链成功' : '处理中' }}
+              </van-tag>
+            </div>
+          </div>
+
+          <van-cell-group inset title="存证基本信息">
+            <van-cell title="事件编号" :value="detail?.eventNo || detail?.id" />
+            <van-cell title="事件标题" :value="detail?.title" />
+            <van-cell title="存证链" :value="blockchainEvidence.chainType" />
+            <van-cell title="交易哈希" is-link @click="copyText(blockchainEvidence.txHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.txHash }}</span>
+              </template>
+            </van-cell>
+            <van-cell title="区块高度" :value="blockchainEvidence.blockHeight" />
+            <van-cell title="区块时间" :value="blockchainEvidence.blockTime" />
+            <van-cell title="存证时间" :value="blockchainEvidence.createdAt" />
+          </van-cell-group>
+
+          <van-cell-group inset title="证据哈希清单" style="margin-top: 12px">
+            <van-cell title="证据总哈希" is-link @click="copyText(blockchainEvidence.evidenceHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.evidenceHash }}</span>
+              </template>
+            </van-cell>
+            <van-cell v-if="blockchainEvidence.imageCount > 0" title="图片数量" :value="`${blockchainEvidence.imageCount}张`" />
+            <van-cell v-if="blockchainEvidence.videoCount > 0" title="视频数量" :value="`${blockchainEvidence.videoCount}个`" />
+            <van-cell v-if="blockchainEvidence.voiceHash" title="语音哈希" is-link @click="copyText(blockchainEvidence.voiceHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.voiceHash }}</span>
+              </template>
+            </van-cell>
+            <van-cell title="GPS哈希" is-link @click="copyText(blockchainEvidence.gpsHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.gpsHash }}</span>
+              </template>
+            </van-cell>
+            <van-cell title="标题哈希" is-link @click="copyText(blockchainEvidence.titleHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.titleHash }}</span>
+              </template>
+            </van-cell>
+            <van-cell title="描述哈希" is-link @click="copyText(blockchainEvidence.descHash)">
+              <template #value>
+                <span class="hash-text">{{ blockchainEvidence.descHash }}</span>
+              </template>
+            </van-cell>
+          </van-cell-group>
+
+          <van-cell-group inset style="margin-top: 12px">
+            <van-cell title="核验状态">
+              <template #value>
+                <van-tag :type="blockchainEvidence.verified === 1 ? 'success' : 'warning'" size="medium">
+                  {{ blockchainEvidence.verified === 1 ? '已核验 · 数据真实有效' : '待核验' }}
+                </van-tag>
+              </template>
+            </van-cell>
+            <van-cell v-if="blockchainEvidence.verifyTime" title="最近核验时间" :value="blockchainEvidence.verifyTime" />
+          </van-cell-group>
+
+          <div class="cert-footer">
+            <van-button block round type="primary" icon="scan" :loading="verifyingEvidence" @click="onVerifyEvidence">
+              立即核验
+            </van-button>
+            <div class="cert-disclaimer">
+              * 本证书由司法联盟链存证，数据不可篡改，可作为司法证据使用
+            </div>
+          </div>
+        </div>
+      </div>
+    </van-popup>
+
     <!-- 呼叫网格员 ActionSheet -->
     <van-action-sheet v-model:show="showCallSheet" title="选择呼叫的网格员" :actions="nearbyData.members.map(m=>({
       name: `${m.userName}（${m.distance}米）`,
@@ -731,7 +874,10 @@ import {
   compareImages,
   nlpRecommend,
   nlpAdoptDispatch,
-  getDispatchHistory
+  getDispatchHistory,
+  getBlockchainEvidence,
+  createBlockchainEvidence,
+  verifyBlockchainEvidence
 } from '@/api'
 import { useUserStore, useVoiceStore } from '@/store'
 import { speak, stop } from '@/utils/tts'
@@ -796,6 +942,11 @@ const nearbyData = reactive({
   emergencies: [],
   members: []
 })
+
+const blockchainEvidence = ref(null)
+const blockchainLoading = ref(false)
+const verifyingEvidence = ref(false)
+const showEvidenceDialog = ref(false)
 const showCallSheet = ref(false)
 const showResourceMap = ref(false)
 
@@ -1071,6 +1222,7 @@ const fetchDetail = async () => {
     } else {
       fetchNlpRecommendation()
     }
+    fetchBlockchainEvidence()
   } catch (e) {
     console.warn('Load event detail failed, using mock data', e)
     detail.value = getMockDetail()
@@ -1082,6 +1234,59 @@ const fetchDetail = async () => {
     if (voiceStore.enabled && voiceStore.autoPlayOnDetail && detail.value) {
       setTimeout(() => onToggleDetailRead(), 500)
     }
+  }
+}
+
+const fetchBlockchainEvidence = async () => {
+  try {
+    const res = await getBlockchainEvidence(route.params.id)
+    blockchainEvidence.value = res.data
+  } catch (e) {
+    blockchainEvidence.value = null
+  }
+}
+
+const onCreateEvidence = async () => {
+  try {
+    blockchainLoading.value = true
+    const res = await createBlockchainEvidence(route.params.id)
+    blockchainEvidence.value = res.data
+    showToast({ type: 'success', message: '存证成功' })
+  } catch (e) {
+    showToast(e.message || '存证失败')
+  } finally {
+    blockchainLoading.value = false
+  }
+}
+
+const onVerifyEvidence = async () => {
+  if (!blockchainEvidence.value?.id) return
+  try {
+    verifyingEvidence.value = true
+    const res = await verifyBlockchainEvidence(blockchainEvidence.value.id)
+    if (res.data?.valid) {
+      blockchainEvidence.value.verified = 1
+      showToast({ type: 'success', message: '存证核验通过' })
+    } else {
+      showToast({ type: 'fail', message: '存证核验失败' })
+    }
+  } catch (e) {
+    showToast(e.message || '核验失败')
+  } finally {
+    verifyingEvidence.value = false
+  }
+}
+
+const openEvidenceDetail = () => {
+  showEvidenceDialog.value = true
+}
+
+const copyText = (text) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text)
+    showToast('已复制')
+  } else {
+    showToast('复制失败，请手动复制')
   }
 }
 
@@ -2346,5 +2551,117 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.evidence-empty-text {
+  color: #c8c9cc;
+  font-size: 13px;
+}
+
+.evidence-actions {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  justify-content: center;
+}
+
+.evidence-create-btn {
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.hash-text {
+  font-size: 11px;
+  color: #969799;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  font-family: monospace;
+}
+
+.evidence-cert-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f7f8fa;
+}
+
+.cert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+
+  .cert-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #323233;
+  }
+}
+
+.cert-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.cert-qr-section {
+  background: #fff;
+  padding: 24px 16px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+
+  .qr-code-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+
+    .qr-code-placeholder {
+      width: 140px;
+      height: 140px;
+      border: 2px solid #07c160;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #f0fff4;
+
+      .qr-text {
+        font-size: 12px;
+        color: #07c160;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .cert-no {
+    font-size: 13px;
+    color: #646566;
+    margin-bottom: 8px;
+    font-family: monospace;
+  }
+}
+
+.cert-footer {
+  padding: 16px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+
+  .cert-disclaimer {
+    margin-top: 12px;
+    font-size: 11px;
+    color: #c8c9cc;
+    text-align: center;
+  }
 }
 </style>

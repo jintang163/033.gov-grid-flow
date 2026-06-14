@@ -348,3 +348,32 @@ export const getDispatchHistory = (eventId) => {
     method: 'get'
   })
 }
+
+// ===== 区块链存证 =====
+export const getBlockchainEvidence = (eventId) => {
+  return request({
+    url: `/blockchain/evidence/event/${eventId}`,
+    method: 'get'
+  })
+}
+
+export const createBlockchainEvidence = (eventId) => {
+  return request({
+    url: `/blockchain/evidence/create/${eventId}`,
+    method: 'post'
+  })
+}
+
+export const verifyBlockchainEvidence = (evidenceId) => {
+  return request({
+    url: `/blockchain/evidence/verify/${evidenceId}`,
+    method: 'post'
+  })
+}
+
+export const isHighRiskEventType = (eventType) => {
+  return request({
+    url: `/blockchain/evidence/high-risk/${eventType}`,
+    method: 'get'
+  })
+}

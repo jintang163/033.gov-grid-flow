@@ -579,6 +579,46 @@ CREATE TABLE `event_dispatch_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件智能分派记录';
 
 -- ---------------------------------------------
+-- 15. 区块链存证表 event_blockchain_evidence
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_blockchain_evidence`;
+CREATE TABLE `event_blockchain_evidence` (
+  `id`                  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_id`            bigint(20) NOT NULL COMMENT '事件ID',
+  `evidence_no`         varchar(64)  DEFAULT NULL COMMENT '存证编号',
+  `chain_type`          varchar(64)  DEFAULT '司法联盟链' COMMENT '存证链类型',
+  `tx_hash`             varchar(128) DEFAULT NULL COMMENT '交易哈希',
+  `block_height`        bigint(20)   DEFAULT NULL COMMENT '区块高度',
+  `block_time`          datetime     DEFAULT NULL COMMENT '区块时间',
+  `evidence_hash`       varchar(128) DEFAULT NULL COMMENT '证据总哈希(SHA256)',
+  `image_count`         int(11)      DEFAULT 0 COMMENT '图片数量',
+  `image_hashes`        text         DEFAULT NULL COMMENT '图片哈希列表(逗号分隔)',
+  `video_count`         int(11)      DEFAULT 0 COMMENT '视频数量',
+  `video_hashes`        text         DEFAULT NULL COMMENT '视频哈希列表(逗号分隔)',
+  `voice_hash`          varchar(128) DEFAULT NULL COMMENT '语音文件哈希',
+  `gps_hash`            varchar(128) DEFAULT NULL COMMENT 'GPS位置哈希',
+  `title_hash`          varchar(128) DEFAULT NULL COMMENT '事件标题哈希',
+  `desc_hash`           varchar(128) DEFAULT NULL COMMENT '事件描述哈希',
+  `reporter_info`       varchar(255) DEFAULT NULL COMMENT '上报人信息',
+  `status`              varchar(32)  DEFAULT 'PENDING' COMMENT '状态(PENDING/SUCCESS/FAILED)',
+  `certificate_url`     varchar(500) DEFAULT NULL COMMENT '存证证书URL',
+  `verified`            tinyint(1)   DEFAULT 0 COMMENT '是否已核验(0否1是)',
+  `verify_time`         datetime     DEFAULT NULL COMMENT '最近核验时间',
+  `remark`              varchar(500) DEFAULT NULL COMMENT '备注',
+  `created_by`          bigint(20)   DEFAULT NULL COMMENT '创建人',
+  `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_by`          bigint(20)   DEFAULT NULL COMMENT '更新人',
+  `updated_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             tinyint(4)   NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_evidence_no` (`evidence_no`),
+  KEY `idx_event_id` (`event_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_tx_hash` (`tx_hash`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='区块链存证记录';
+
+-- ---------------------------------------------
 -- 周边资源示例数据：摄像头
 -- ---------------------------------------------
 INSERT INTO `resource_camera` (`id`, `camera_code`, `camera_name`, `camera_type`, `lng`, `lat`, `address`, `rtsp_url`, `hls_url`, `grid_id`, `manufacturer`, `status`) VALUES

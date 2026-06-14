@@ -272,6 +272,22 @@
             <van-icon name="info-o" size="12" color="#1989fa" />
             <span>启用后，附件将使用数字信封加密，仅您选择的「{{ watermarkInfo.targetDeptName || '处置部门' }}」可解密查看</span>
           </div>
+
+          <van-field name="blockchain">
+            <template #input>
+              <div class="anonymous-wrap">
+                <div class="blockchain-label-wrap">
+                  <span class="anonymous-label">区块链存证</span>
+                  <van-tag v-if="isHighRiskEvent" size="mini" type="danger" round>建议开启</van-tag>
+                </div>
+                <van-switch v-model="form.blockchainEnabled" :active-value="1" :inactive-value="0" />
+              </div>
+            </template>
+          </van-field>
+          <div class="blockchain-hint">
+            <van-icon name="info-o" size="12" color="#07c160" />
+            <span>开启后，图片、视频、GPS等证据哈希将同步至司法联盟链，生成不可篡改的存证证书</span>
+          </div>
         </van-cell-group>
 
         <van-cell-group inset title="上报人信息" style="margin-top: 12px">
@@ -396,7 +412,7 @@
 import { reactive, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice, getDeptList, nlpClassify } from '@/api'
+import { reportEvent, reportEventAnonymous, uploadFile, getEventTypeList, getGridList, getNearbyResources, transcribeVoice, getDeptList, nlpClassify, isHighRiskEventType } from '@/api'
 import { uploadWithWatermark, linkEventToWatermark } from '@/api/watermark'
 import { addImageWatermark, addVideoWatermark, calculateMD5 } from '@/utils/watermark'
 import { getCurrentLocation, getAddressByLngLat } from '@/utils/amap'
@@ -483,8 +499,11 @@ const form = reactive({
   reporterName: '',
   reporterPhone: '',
   gridId: null,
-  gridName: ''
+  gridName: '',
+  blockchainEnabled: 0
 })
+
+const isHighRiskEvent = ref(false)
 
 const typeColumns = ref([
   { text: '环境卫生', value: 'environment' },
@@ -643,6 +662,29 @@ const onTypeConfirm = ({ selectedOptions }) => {
   form.eventType = selectedOptions[0].value
   form.eventTypeText = selectedOptions[0].text
   showTypePicker.value = false
+  checkHighRiskType(selectedOptions[0].value)
+  triggerNlpClassify()
+}
+
+const checkHighRiskType = async (eventType) => {
+  if (!eventType) {
+    isHighRiskEvent.value = false
+    return
+  }
+  try {
+    const res = await isHighRiskEventType(eventType)
+    const highRisk = res?.data === true
+    isHighRiskEvent.value = highRisk
+    if (highRisk && form.blockchainEnabled === 0) {
+      form.blockchainEnabled = 1
+    }
+  } catch (e) {
+    const highRiskTypes = ['security', 'dispute', 'safety_hazard', 'public_security']
+    isHighRiskEvent.value = highRiskTypes.includes(eventType)
+    if (isHighRiskEvent.value && form.blockchainEnabled === 0) {
+      form.blockchainEnabled = 1
+    }
+  }
 }
 
 const onPriorityConfirm = ({ selectedOptions }) => {
@@ -1026,6 +1068,7 @@ const buildSubmitData = (withClientId = true) => {
     anonymous: form.anonymous,
     priority: form.priority,
     gridId: form.gridId,
+    blockchainEnabled: form.blockchainEnabled,
     eventTimestamp: Date.now()
   }
 
@@ -1225,6 +1268,24 @@ const onSubmit = async () => {
   background: #f0f9ff;
   border-radius: 4px;
   margin: 0 16px 12px;
+}
+
+.blockchain-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 12px;
+  font-size: 12px;
+  color: #07c160;
+  background: #f0fff4;
+  border-radius: 4px;
+  margin: 0 16px 12px;
+}
+
+.blockchain-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .voice-input-wrap {

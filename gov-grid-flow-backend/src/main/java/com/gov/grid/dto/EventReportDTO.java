@@ -53,6 +53,8 @@ public class EventReportDTO {
 
     private String reporterId;
 
+    private Integer blockchainEnabled = 0;
+
     public String getEventTypeResolved() {
         if (eventType != null && !eventType.isEmpty()) {
             return eventType;

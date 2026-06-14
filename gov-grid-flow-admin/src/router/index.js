@@ -115,6 +115,18 @@ const routes = [
         meta: { title: '关联分析报告', icon: 'DataLine', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
       }
     ]
+  },
+  {
+    path: '/blockchain',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'index',
+        name: 'Blockchain',
+        component: () => import('@/views/blockchain/index.vue'),
+        meta: { title: '区块链存证', icon: 'Lock', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
+      }
+    ]
   }
 ]
 
