@@ -40,6 +40,12 @@ const routes = [
     name: 'Profile',
     component: () => import('@/views/profile/index.vue'),
     meta: { title: '我的', requiresAuth: true }
+  },
+  {
+    path: '/voice-settings',
+    name: 'VoiceSettings',
+    component: () => import('@/views/profile/voice.vue'),
+    meta: { title: '语音播报设置', requiresAuth: true }
   }
 ]
 

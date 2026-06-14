@@ -63,6 +63,116 @@ export const useAppStore = defineStore('app', {
   }
 })
 
+export const useVoiceStore = defineStore('voice', {
+  state: () => ({
+    enabled: localStorage.getItem('voice_enabled') === '1',
+    todoEnabled: localStorage.getItem('voice_todo_enabled') !== '0',
+    reminderEnabled: localStorage.getItem('voice_reminder_enabled') !== '0',
+    rate: parseFloat(localStorage.getItem('voice_rate')) || 1.0,
+    pitch: parseFloat(localStorage.getItem('voice_pitch')) || 1.0,
+    volume: parseFloat(localStorage.getItem('voice_volume')) || 1.0,
+    autoPlayOnDetail: localStorage.getItem('voice_auto_detail') === '1',
+    broadcastQueue: [],
+    isBroadcasting: false,
+    lastBroadcastTime: null,
+    broadcastHistory: []
+  }),
+  getters: {
+    isEnabled: (state) => state.enabled,
+    canBroadcastTodo: (state) => state.enabled && state.todoEnabled,
+    canBroadcastReminder: (state) => state.enabled && state.reminderEnabled,
+    rateText: (state) => {
+      if (state.rate <= 0.6) return '慢速'
+      if (state.rate <= 0.9) return '较慢'
+      if (state.rate <= 1.1) return '正常'
+      if (state.rate <= 1.4) return '较快'
+      return '快速'
+    }
+  },
+  actions: {
+    setEnabled(enabled) {
+      this.enabled = enabled
+      localStorage.setItem('voice_enabled', enabled ? '1' : '0')
+    },
+    setTodoEnabled(enabled) {
+      this.todoEnabled = enabled
+      localStorage.setItem('voice_todo_enabled', enabled ? '1' : '0')
+    },
+    setReminderEnabled(enabled) {
+      this.reminderEnabled = enabled
+      localStorage.setItem('voice_reminder_enabled', enabled ? '1' : '0')
+    },
+    setRate(rate) {
+      const clamped = Math.max(0.5, Math.min(2, rate))
+      this.rate = clamped
+      localStorage.setItem('voice_rate', String(clamped))
+    },
+    setPitch(pitch) {
+      const clamped = Math.max(0.5, Math.min(2, pitch))
+      this.pitch = clamped
+      localStorage.setItem('voice_pitch', String(clamped))
+    },
+    setVolume(volume) {
+      const clamped = Math.max(0, Math.min(1, volume))
+      this.volume = clamped
+      localStorage.setItem('voice_volume', String(clamped))
+    },
+    setAutoPlayOnDetail(enabled) {
+      this.autoPlayOnDetail = enabled
+      localStorage.setItem('voice_auto_detail', enabled ? '1' : '0')
+    },
+    getVoiceOptions() {
+      return {
+        rate: this.rate,
+        pitch: this.pitch,
+        volume: this.volume,
+        lang: 'zh-CN'
+      }
+    },
+    addToBroadcastQueue(item) {
+      this.broadcastQueue.push({
+        ...item,
+        id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        addedAt: Date.now()
+      })
+      this._processQueue()
+    },
+    async _processQueue() {
+      if (this.isBroadcasting || this.broadcastQueue.length === 0 || !this.enabled) {
+        return
+      }
+      this.isBroadcasting = true
+      const tts = await import('@/utils/tts')
+      while (this.broadcastQueue.length > 0 && this.enabled) {
+        const item = this.broadcastQueue.shift()
+        try {
+          await tts.speak(item.text, this.getVoiceOptions())
+          this.broadcastHistory.unshift(item)
+          if (this.broadcastHistory.length > 20) {
+            this.broadcastHistory.pop()
+          }
+          this.lastBroadcastTime = Date.now()
+          if (this.broadcastQueue.length > 0) {
+            await new Promise(r => setTimeout(r, 300))
+          }
+        } catch (e) {
+          console.warn('[Voice] 播报失败:', e, item)
+        }
+      }
+      this.isBroadcasting = false
+    },
+    async clearQueue() {
+      this.broadcastQueue = []
+      const tts = await import('@/utils/tts')
+      tts.stop()
+      this.isBroadcasting = false
+    },
+    clearHistory() {
+      this.broadcastHistory = []
+    }
+  }
+})
+
 export const useOfflineStore = defineStore('offline', {
   state: () => ({
     events: [],

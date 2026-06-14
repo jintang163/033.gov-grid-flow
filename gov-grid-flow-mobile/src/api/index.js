@@ -280,3 +280,33 @@ export const batchSyncEvents = (data) => {
     data
   })
 }
+
+export const getMyReminders = (params) => {
+  return request({
+    url: '/event/reminders',
+    method: 'get',
+    params
+  })
+}
+
+export const getUnreadReminderCount = () => {
+  return request({
+    url: '/event/reminders/unread-count',
+    method: 'get'
+  })
+}
+
+export const markReminderRead = (id) => {
+  return request({
+    url: `/event/reminders/${id}/read`,
+    method: 'post'
+  })
+}
+
+export const getNewTodoSince = (lastTime) => {
+  return request({
+    url: '/event/my-todo/new',
+    method: 'get',
+    params: { since: lastTime }
+  })
+}

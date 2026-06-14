@@ -87,5 +87,8 @@ app.use(SwipeItem)
 app.use(Search)
 app.use(DropdownMenu)
 app.use(DropdownItem)
+app.use(Badge)
+app.use(Slider)
+app.use(Switch)
 
 app.mount('#app')

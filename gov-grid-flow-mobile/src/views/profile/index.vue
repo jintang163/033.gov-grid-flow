@@ -71,6 +71,18 @@
         <van-cell title="修改密码" icon="lock" is-link @click="goChangePassword" />
       </van-cell-group>
 
+      <van-cell-group inset style="margin-top: 12px">
+        <van-cell title="语音播报设置" icon="volume-o" is-link @click="goVoiceSettings">
+          <template #right-icon>
+            <span v-if="voiceStore.enabled" class="voice-enabled">
+              <i class="dot voice-dot"></i>
+              已开启
+            </span>
+            <span v-else class="voice-disabled">未开启</span>
+          </template>
+        </van-cell>
+      </van-cell-group>
+
       <div class="logout-btn">
         <van-button block round type="danger" @click="handleLogout">
           退出登录
@@ -122,12 +134,13 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
-import { useUserStore, useOfflineStore } from '@/store'
+import { useUserStore, useOfflineStore, useVoiceStore } from '@/store'
 import { getMyTodo, getMyReport, getMyDone, changePassword } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
 const offlineStore = useOfflineStore()
+const voiceStore = useVoiceStore()
 const active = ref(3)
 const showPasswordDialog = ref(false)
 
@@ -217,6 +230,10 @@ const goChangePassword = () => {
   passwordForm.newPassword = ''
   passwordForm.confirmPassword = ''
   showPasswordDialog.value = true
+}
+
+const goVoiceSettings = () => {
+  router.push('/voice-settings')
 }
 
 const onPasswordConfirm = async () => {
@@ -408,6 +425,38 @@ onMounted(() => {
 }
 
 .net-offline {
+  color: #969799;
+}
+
+.voice-enabled,
+.voice-disabled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-right: 4px;
+
+  .voice-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #07c160;
+    box-shadow: 0 0 4px #07c160;
+    animation: voice-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.voice-enabled {
+  color: #07c160;
+}
+
+.voice-disabled {
   color: #969799;
 }
 </style>
