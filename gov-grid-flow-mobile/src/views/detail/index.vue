@@ -7,11 +7,29 @@
     </div>
 
     <div v-else-if="detail" class="detail-content">
+      <div v-if="voiceStore.enabled && isReadingDetail" class="voice-reading-bar">
+        <div class="broadcast-wave">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <span class="broadcast-text">正在朗读详情...</span>
+        <van-button size="mini" type="danger" plain @click="onStopDetailRead">停止</van-button>
+      </div>
+
       <van-card class="header-card">
         <template #title>
           <div class="header-top">
             <span class="event-no">{{ detail.eventNo || detail.id }}</span>
-            <van-tag :type="statusTagType" size="medium">{{ statusText }}</van-tag>
+            <div class="header-actions">
+              <van-icon
+                v-if="voiceStore.enabled"
+                :name="isReadingDetail ? 'volume-o' : 'volume-o'"
+                size="18"
+                :color="isReadingDetail ? '#ee0a24' : '#1989fa'"
+                class="voice-icon"
+                @click="onToggleDetailRead"
+              />
+              <van-tag :type="statusTagType" size="medium">{{ statusText }}</van-tag>
+            </div>
           </div>
         </template>
         <template #desc>
@@ -656,7 +674,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showConfirmDialog, showImagePreview } from 'vant'
 import {
@@ -674,15 +692,19 @@ import {
   uploadFile,
   compareImages
 } from '@/api'
-import { useUserStore } from '@/store'
+import { useUserStore, useVoiceStore } from '@/store'
+import { speak, stop } from '@/utils/tts'
 import { getFullFileUrl, getBaseURL } from '@/utils/fileUrl'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const voiceStore = useVoiceStore()
 
 const loading = ref(true)
 const detail = ref(null)
+const isReadingDetail = ref(false)
+const detailReadCancelled = ref(false)
 
 const showAssign = ref(false)
 const showEvaluate = ref(false)
@@ -906,6 +928,78 @@ const buildDefaultProcessList = () => {
   return list
 }
 
+const buildDetailBroadcastText = () => {
+  const d = detail.value
+  if (!d) return ''
+  const eventType = d.eventTypeText || d.eventType || '未分类'
+  const priority = priorityText.value || '一般'
+  const title = d.title || '无标题'
+  const address = d.address || '暂无位置信息'
+  const description = d.description || '暂无描述'
+  const reportTime = d.reportTime || d.createTime || ''
+  const reporter = d.anonymous ? '匿名用户' : (d.reporterName || d.reporter || d.createBy || '匿名')
+
+  let text = `${priority}事件详情。`
+  text += `事件类型：${eventType}。`
+  text += `标题：${title}。`
+  text += `地点：${address}。`
+  text += `描述：${description}。`
+  if (reportTime) {
+    text += `上报时间：${reportTime.replace('T', ' ').slice(0, 16)}。`
+  }
+  if (!d.anonymous) {
+    text += `上报人：${reporter}。`
+  }
+  return text
+}
+
+const onToggleDetailRead = async () => {
+  if (isReadingDetail.value) {
+    onStopDetailRead()
+    return
+  }
+  if (!voiceStore.enabled) {
+    showToast('请先在设置中开启语音播报')
+    return
+  }
+  if (!detail.value) {
+    showToast('详情未加载完成')
+    return
+  }
+
+  detailReadCancelled.value = false
+  isReadingDetail.value = true
+  voiceStore.isBroadcasting = true
+
+  try {
+    const text = buildDetailBroadcastText()
+    await speak(text, voiceStore.getVoiceOptions())
+    if (!detailReadCancelled.value) {
+      showToast('详情朗读完成')
+    }
+  } catch (e) {
+    console.error(e)
+    if (e.message !== 'cancel' && e.message !== 'interrupted' && !detailReadCancelled.value) {
+      showToast('语音朗读失败')
+    }
+  } finally {
+    isReadingDetail.value = false
+    if (voiceStore.broadcastQueue.length === 0) {
+      voiceStore.isBroadcasting = false
+    }
+  }
+}
+
+const onStopDetailRead = () => {
+  detailReadCancelled.value = true
+  stop()
+  isReadingDetail.value = false
+  if (voiceStore.broadcastQueue.length === 0) {
+    voiceStore.isBroadcasting = false
+  }
+  showToast('已停止朗读')
+}
+
 const onBack = () => router.back()
 
 const fetchDetail = async () => {
@@ -924,6 +1018,9 @@ const fetchDetail = async () => {
     }
   } finally {
     loading.value = false
+    if (voiceStore.enabled && voiceStore.autoPlayOnDetail && detail.value) {
+      setTimeout(() => onToggleDetailRead(), 500)
+    }
   }
 }
 
@@ -1334,6 +1431,12 @@ const submitEvaluationForm = async () => {
 
 onMounted(() => {
   fetchDetail()
+})
+
+onUnmounted(() => {
+  detailReadCancelled.value = true
+  stop()
+  isReadingDetail.value = false
 })
 </script>
 
@@ -1963,5 +2066,84 @@ onMounted(() => {
   display: flex; align-items: center; gap: 10px;
   .mem-info { flex:1; .mem-name {font-weight:500;font-size:13px;} .mem-meta{font-size:11px;color:#969799;display:flex;gap:6px;margin-top:2px;}}
   .call-btn { width:36px; height:36px; border-radius:50%; background:#07c160; display:flex; align-items:center; justify-content:center; color:#fff; }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-icon {
+  cursor: pointer;
+  transition: opacity 0.2s;
+  padding: 2px;
+
+  &:active {
+    opacity: 0.6;
+  }
+}
+
+.voice-reading-bar {
+  position: sticky;
+  top: 46px;
+  left: 0;
+  right: 0;
+  background: rgba(25, 137, 250, 0.95);
+  color: #fff;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 90;
+  backdrop-filter: blur(4px);
+  margin: 0 0 12px;
+}
+
+.voice-reading-bar .broadcast-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.voice-reading-bar .broadcast-wave span {
+  width: 3px;
+  background: #fff;
+  animation: detail-broadcast-wave 1s ease-in-out infinite;
+}
+
+.voice-reading-bar .broadcast-wave span:nth-child(1) {
+  height: 40%;
+  animation-delay: 0s;
+}
+
+.voice-reading-bar .broadcast-wave span:nth-child(2) {
+  height: 100%;
+  animation-delay: 0.1s;
+}
+
+.voice-reading-bar .broadcast-wave span:nth-child(3) {
+  height: 60%;
+  animation-delay: 0.2s;
+}
+
+.voice-reading-bar .broadcast-wave span:nth-child(4) {
+  height: 80%;
+  animation-delay: 0.3s;
+}
+
+@keyframes detail-broadcast-wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+
+.voice-reading-bar .broadcast-text {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

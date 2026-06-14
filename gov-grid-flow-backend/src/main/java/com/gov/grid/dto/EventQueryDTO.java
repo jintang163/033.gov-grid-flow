@@ -24,4 +24,8 @@ public class EventQueryDTO {
     private Integer pageNum;
 
     private Integer pageSize;
+
+    private java.time.LocalDateTime createdAtStart;
+
+    private java.time.LocalDateTime createdAtEnd;
 }

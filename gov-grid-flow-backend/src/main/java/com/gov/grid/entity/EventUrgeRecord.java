@@ -48,4 +48,10 @@ public class EventUrgeRecord extends BaseEntity {
 
     @TableField("error_msg")
     private String errorMsg;
+
+    @TableField("is_read")
+    private Integer isRead;
+
+    @TableField("read_at")
+    private java.time.LocalDateTime readAt;
 }

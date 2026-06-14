@@ -385,6 +385,12 @@ public class EventServiceImpl implements EventService {
         if (StrUtil.isNotBlank(dto.getEndTime())) {
             wrapper.le(EventInfo::getCreatedAt, dto.getEndTime());
         }
+        if (dto.getCreatedAtStart() != null) {
+            wrapper.ge(EventInfo::getCreatedAt, dto.getCreatedAtStart());
+        }
+        if (dto.getCreatedAtEnd() != null) {
+            wrapper.le(EventInfo::getCreatedAt, dto.getCreatedAtEnd());
+        }
         if (dto.getReporterId() != null) {
             wrapper.eq(EventInfo::getReporterId, dto.getReporterId());
         }

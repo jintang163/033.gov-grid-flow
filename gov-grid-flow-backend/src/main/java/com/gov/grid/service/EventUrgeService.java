@@ -47,4 +47,10 @@ public interface EventUrgeService {
     int scanAndUrge();
 
     boolean escalateEvent(EventInfo event, String escalateLevel);
+
+    PageResult<EventUrgeRecord> getMyReminders(Long receiverId, Integer page, Integer size);
+
+    Integer getUnreadReminderCount(Long receiverId);
+
+    boolean markReminderRead(Long id, Long receiverId);
 }

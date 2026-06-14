@@ -10,8 +10,11 @@ import com.gov.grid.dto.EventReportDTO;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.enums.EventStatus;
 import com.gov.grid.enums.ProcessAction;
+import com.gov.grid.common.PageResult;
+import com.gov.grid.entity.EventUrgeRecord;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
+import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.vo.EventDetailVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -34,6 +37,7 @@ public class EventController {
 
     private final EventService eventService;
     private final EventProcessService eventProcessService;
+    private final EventUrgeService eventUrgeService;
 
     @ApiOperation("上报事件（移动端/网格员）")
     @PostMapping("/report")
@@ -156,6 +160,50 @@ public class EventController {
     public Result<PageResult<EventInfo>> getMyReport(EventQueryDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setReporterId(userId);
+        PageResult<EventInfo> pageResult = eventService.getEventList(dto);
+        return Result.success(pageResult);
+    }
+
+    @ApiOperation("我的催办列表（移动端）")
+    @GetMapping("/reminders")
+    public Result<PageResult<EventUrgeRecord>> getMyReminders(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize,
+            HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        PageResult<EventUrgeRecord> page = eventUrgeService.getMyReminders(userId, pageNum, pageSize);
+        return Result.success(page);
+    }
+
+    @ApiOperation("未读催办数量（移动端）")
+    @GetMapping("/reminders/unread-count")
+    public Result<Integer> getUnreadReminderCount(HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        Integer count = eventUrgeService.getUnreadReminderCount(userId);
+        return Result.success(count);
+    }
+
+    @ApiOperation("标记催办已读（移动端）")
+    @PostMapping("/reminders/{id}/read")
+    public Result<Boolean> markReminderRead(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        boolean result = eventUrgeService.markReminderRead(id, userId);
+        return Result.success(result ? "已标记" : "标记失败", result);
+    }
+
+    @ApiOperation("新增待办（自since时间起，移动端轮询）")
+    @GetMapping("/my-todo/new")
+    public Result<PageResult<EventInfo>> getNewTodoSince(
+            @RequestParam(required = false) Long since,
+            EventQueryDTO dto,
+            HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        dto.setStatus("PROCESSING");
+        if (since != null && since > 0) {
+            dto.setCreatedAtStart(new java.sql.Timestamp(since).toLocalDateTime());
+        } else {
+            dto.setCreatedAtStart(java.time.LocalDateTime.now().minusMinutes(5));
+        }
         PageResult<EventInfo> pageResult = eventService.getEventList(dto);
         return Result.success(pageResult);
     }

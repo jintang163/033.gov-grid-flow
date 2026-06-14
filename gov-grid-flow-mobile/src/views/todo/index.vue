@@ -114,6 +114,7 @@ const unreadReminderCount = ref(0)
 const showReminderDialog = ref(false)
 
 const knownTodoIds = ref(new Set())
+const manualBroadcastCancelled = ref(false)
 let reminderPollTimer = null
 let todoPollTimer = null
 
@@ -493,31 +494,44 @@ const onToggleVoiceBroadcast = async () => {
     showToast('暂无待办事件可播报')
     return
   }
+
+  manualBroadcastCancelled.value = false
+  voiceStore.isBroadcasting = true
+
   try {
     const userName = userStore.userName || '网格员'
     const todoCount = todoList.value.length
     const introText = `${userName}您好，您当前有${todoCount}条待办事件，即将为您播报。`
     await speak(introText, voiceStore.getVoiceOptions())
 
+    if (manualBroadcastCancelled.value) {
+      return
+    }
+
     for (let i = 0; i < todoList.value.length; i++) {
-      if (!voiceStore.isBroadcasting && i > 0) break
+      if (manualBroadcastCancelled.value) break
       const text = buildTodoBroadcastText(todoList.value[i], i)
       await speak(text, voiceStore.getVoiceOptions())
-      if (i < todoList.value.length - 1) {
+      if (!manualBroadcastCancelled.value && i < todoList.value.length - 1) {
         await new Promise(r => setTimeout(r, 400))
       }
     }
 
-    showToast('播报完成')
+    if (!manualBroadcastCancelled.value) {
+      showToast('播报完成')
+    }
   } catch (e) {
     console.error(e)
-    if (e.message !== 'cancel') {
+    if (e.message !== 'cancel' && e.message !== 'interrupted' && !manualBroadcastCancelled.value) {
       showToast('语音播报失败')
     }
+  } finally {
+    voiceStore.isBroadcasting = false
   }
 }
 
 const onStopVoice = () => {
+  manualBroadcastCancelled.value = true
   stop()
   voiceStore.clearQueue()
   showToast('已停止播报')
@@ -565,21 +579,31 @@ const onShowReminders = async () => {
     allowHtml: false
   }).then(async () => {
     if (voiceStore.enabled && voiceStore.canBroadcastReminder) {
+      manualBroadcastCancelled.value = false
+      voiceStore.isBroadcasting = true
       try {
         for (let i = 0; i < list.length; i++) {
+          if (manualBroadcastCancelled.value) break
           const text = buildReminderBroadcastText(list[i], i)
           await speak(text, voiceStore.getVoiceOptions())
           if (list[i].id) {
             markReminderRead(list[i].id).catch(() => {})
           }
-          if (i < list.length - 1) {
+          if (!manualBroadcastCancelled.value && i < list.length - 1) {
             await new Promise(r => setTimeout(r, 300))
           }
         }
         unreadReminderCount.value = 0
-        showToast('催办播报完成')
+        if (!manualBroadcastCancelled.value) {
+          showToast('催办播报完成')
+        }
       } catch (e) {
         console.error(e)
+        if (e.message !== 'cancel' && e.message !== 'interrupted' && !manualBroadcastCancelled.value) {
+          showToast('语音播报失败')
+        }
+      } finally {
+        voiceStore.isBroadcasting = false
       }
     } else {
       showToast('请先开启语音播报')

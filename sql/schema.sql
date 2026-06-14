@@ -207,13 +207,17 @@ CREATE TABLE `event_urge_record` (
   `receiver_name` varchar(50) DEFAULT NULL,
   `send_status`   int(11) NOT NULL DEFAULT 0 COMMENT '0待发 1已发 2失败',
   `error_msg`     varchar(500) DEFAULT NULL,
+  `is_read`       tinyint(4) NOT NULL DEFAULT 0 COMMENT '0未读 1已读',
+  `read_at`       datetime DEFAULT NULL COMMENT '读取时间',
   `created_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted`       tinyint(4) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_event_id` (`event_id`),
   KEY `idx_urge_level` (`urge_level`),
-  KEY `idx_send_status` (`send_status`)
+  KEY `idx_send_status` (`send_status`),
+  KEY `idx_receiver_id` (`receiver_id`),
+  KEY `idx_is_read` (`is_read`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办记录表';
 
 -- ---------------------------------------------

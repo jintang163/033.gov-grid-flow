@@ -378,6 +378,53 @@ public class EventUrgeServiceImpl implements EventUrgeService {
         return true;
     }
 
+    @Override
+    public PageResult<EventUrgeRecord> getMyReminders(Long receiverId, Integer page, Integer size) {
+        if (receiverId == null) {
+            return PageResult.of(0L, new java.util.ArrayList<>(), 1, size != null ? size : 10);
+        }
+        Integer pageNum = page != null ? page : 1;
+        Integer pageSize = size != null ? size : 10;
+
+        Page<EventUrgeRecord> pageObj = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<EventUrgeRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EventUrgeRecord::getReceiverId, receiverId);
+        wrapper.eq(EventUrgeRecord::getSendStatus, 1);
+        wrapper.orderByDesc(EventUrgeRecord::getIsRead);
+        wrapper.orderByDesc(EventUrgeRecord::getCreatedAt);
+
+        Page<EventUrgeRecord> result = eventUrgeRecordMapper.selectPage(pageObj, wrapper);
+        return PageResult.of(result.getTotal(), result.getRecords(), pageNum, pageSize);
+    }
+
+    @Override
+    public Integer getUnreadReminderCount(Long receiverId) {
+        if (receiverId == null) {
+            return 0;
+        }
+        LambdaQueryWrapper<EventUrgeRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EventUrgeRecord::getReceiverId, receiverId);
+        wrapper.eq(EventUrgeRecord::getSendStatus, 1);
+        wrapper.and(w -> w.isNull(EventUrgeRecord::getIsRead).or().eq(EventUrgeRecord::getIsRead, 0));
+        Long count = eventUrgeRecordMapper.selectCount(wrapper);
+        return count != null ? count.intValue() : 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean markReminderRead(Long id, Long receiverId) {
+        if (id == null) return false;
+        EventUrgeRecord record = eventUrgeRecordMapper.selectById(id);
+        if (record == null) return false;
+        if (receiverId != null && !receiverId.equals(record.getReceiverId())) {
+            log.warn("[EventUrgeService] 催办已读越权：ID={} 请求人={} 接收人={}", id, receiverId, record.getReceiverId());
+            return false;
+        }
+        record.setIsRead(1);
+        record.setReadAt(LocalDateTime.now());
+        return eventUrgeRecordMapper.updateById(record) > 0;
+    }
+
     private EventUrgeTemplate findTemplateByUrgeLevel(int urgeLevel) {
         String templateCode;
         switch (urgeLevel) {
