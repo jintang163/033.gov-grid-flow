@@ -12,9 +12,12 @@ import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.entity.EventDispatchRecord;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.entity.SysDept;
+import com.gov.grid.entity.SysUser;
 import com.gov.grid.mapper.EventDispatchRecordMapper;
 import com.gov.grid.mapper.EventInfoMapper;
 import com.gov.grid.mapper.SysDeptMapper;
+import com.gov.grid.mapper.SysUserMapper;
+import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.NlpDispatchService;
 import com.gov.grid.vo.NlpDispatchResultVO;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +51,8 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
     private final EventDispatchRecordMapper dispatchRecordMapper;
     private final EventInfoMapper eventInfoMapper;
     private final SysDeptMapper sysDeptMapper;
+    private final SysUserMapper sysUserMapper;
+    private final EventProcessService eventProcessService;
 
     @Override
     public NlpDispatchResultVO classify(String title, String description, String eventType) {
@@ -88,7 +93,8 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
     @Transactional(rollbackFor = Exception.class)
     public NlpDispatchResultVO classifyWithEventId(Long eventId, String title, String description, String eventType) {
         NlpDispatchResultVO result = classify(title, description, eventType);
-        saveDispatchRecord(eventId, result);
+        Long dispatchRecordId = saveDispatchRecord(eventId, result);
+        result.setDispatchRecordId(dispatchRecordId);
         return result;
     }
 
@@ -115,15 +121,24 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
             return false;
         }
 
-        eventInfo.setStatus("DISPATCHED");
-        eventInfo.setDispatchedAt(LocalDateTime.now());
-        eventInfoMapper.updateById(eventInfo);
+        SysUser handler = findDefaultHandlerForDept(dept.getId());
+        if (handler == null) {
+            log.warn("No handler found for department: {}, skip auto dispatch", dept.getName());
+            return false;
+        }
+
+        try {
+            eventProcessService.assignTask(eventId, null, String.valueOf(handler.getId()), null);
+        } catch (Exception e) {
+            log.error("Auto dispatch failed for event {}, error: {}", eventId, e.getMessage());
+            return false;
+        }
 
         updateDispatchRecordActual(eventId, result.getDepartmentCode(),
                 result.getDepartmentName(), "AUTO_DISPATCHED", 1);
 
-        log.info("Auto dispatched event {} to department {} (confidence: {})",
-                eventId, result.getDepartmentName(), result.getConfidence());
+        log.info("Auto dispatched event {} to department {} (handler: {}, confidence: {})",
+                eventId, result.getDepartmentName(), handler.getRealName(), result.getConfidence());
         return true;
     }
 
@@ -135,21 +150,39 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
             throw new BusinessException("分派记录不存在");
         }
 
+        EventInfo eventInfo = eventInfoMapper.selectById(eventId);
+        if (eventInfo == null) {
+            throw new BusinessException("事件不存在");
+        }
+
+        String deptCode = actualDeptCode != null ? actualDeptCode : record.getRecommendedDeptCode();
+        String deptName = actualDeptName != null ? actualDeptName : record.getRecommendedDeptName();
+
+        SysDept dept = findDeptByCode(deptCode);
+        if (dept == null) {
+            throw new BusinessException("部门不存在: " + deptCode);
+        }
+
+        SysUser handler = findDefaultHandlerForDept(dept.getId());
+        if (handler == null) {
+            throw new BusinessException("部门 " + deptName + " 没有可用的处置员");
+        }
+
         record.setAdopted(1);
-        record.setActualDeptCode(actualDeptCode);
-        record.setActualDeptName(actualDeptName);
+        record.setActualDeptCode(deptCode);
+        record.setActualDeptName(deptName);
         record.setStatus("ADOPTED");
         record.setFeedback("一键采纳");
         dispatchRecordMapper.updateById(record);
 
-        EventInfo eventInfo = eventInfoMapper.selectById(eventId);
-        if (eventInfo != null && "APPROVED".equals(eventInfo.getStatus())) {
-            eventInfo.setStatus("DISPATCHED");
-            eventInfo.setDispatchedAt(LocalDateTime.now());
-            eventInfoMapper.updateById(eventInfo);
+        try {
+            eventProcessService.assignTask(eventId, null, String.valueOf(handler.getId()), null);
+        } catch (Exception e) {
+            log.error("Adopt dispatch failed for event {}, error: {}", eventId, e.getMessage());
+            throw new BusinessException("任务分派失败: " + e.getMessage());
         }
 
-        log.info("Adopted dispatch for event {}, dept: {}", eventId, actualDeptName);
+        log.info("Adopted dispatch for event {}, dept: {}, handler: {}", eventId, deptName, handler.getRealName());
         return true;
     }
 
@@ -287,15 +320,15 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
     private NlpDispatchResultVO buildFallbackResult(String eventType) {
         NlpDispatchResultVO result = new NlpDispatchResultVO();
         Map<String, String[]> typeDeptMap = new HashMap<>();
-        typeDeptMap.put("environment", new String[]{"environmental", "环卫科"});
-        typeDeptMap.put("public_facility", new String[]{"municipal", "市政科"});
-        typeDeptMap.put("dispute", new String[]{"civil_affairs", "民政科"});
-        typeDeptMap.put("safety_hazard", new String[]{"safety", "安监科"});
-        typeDeptMap.put("security", new String[]{"public_security", "治安科"});
-        typeDeptMap.put("service", new String[]{"civil_affairs", "民政科"});
-        typeDeptMap.put("traffic", new String[]{"traffic", "交通科"});
+        typeDeptMap.put("environment", new String[]{"ENVIRONMENTAL", "环卫科"});
+        typeDeptMap.put("public_facility", new String[]{"MUNICIPAL", "市政科"});
+        typeDeptMap.put("dispute", new String[]{"CIVIL_AFFAIRS", "民政科"});
+        typeDeptMap.put("safety_hazard", new String[]{"SAFETY", "安监科"});
+        typeDeptMap.put("security", new String[]{"PUBLIC_SECURITY", "治安科"});
+        typeDeptMap.put("service", new String[]{"CIVIL_AFFAIRS", "民政科"});
+        typeDeptMap.put("traffic", new String[]{"TRAFFIC", "交通科"});
 
-        String[] deptInfo = typeDeptMap.getOrDefault(eventType, new String[]{"other", "综合协调科"});
+        String[] deptInfo = typeDeptMap.getOrDefault(eventType, new String[]{"OTHER", "综合协调科"});
         result.setDepartmentCode(deptInfo[0]);
         result.setDepartmentName(deptInfo[1]);
         result.setConfidence(BigDecimal.valueOf(0.3));
@@ -304,7 +337,7 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
         return result;
     }
 
-    private void saveDispatchRecord(Long eventId, NlpDispatchResultVO result) {
+    private Long saveDispatchRecord(Long eventId, NlpDispatchResultVO result) {
         EventDispatchRecord record = new EventDispatchRecord();
         record.setEventId(eventId);
         record.setRecommendedDeptCode(result.getDepartmentCode());
@@ -322,6 +355,7 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
         dispatchRecordMapper.insert(record);
         log.info("Saved dispatch record for event {}, recommended: {}, confidence: {}",
                 eventId, result.getDepartmentName(), result.getConfidence());
+        return record.getId();
     }
 
     private void updateDispatchRecordActual(Long eventId, String deptCode, String deptName, String status, Integer adopted) {
@@ -345,5 +379,15 @@ public class NlpDispatchServiceImpl implements NlpDispatchService {
         wrapper.eq(SysDept::getCode, deptCode);
         wrapper.last("LIMIT 1");
         return sysDeptMapper.selectOne(wrapper);
+    }
+
+    private SysUser findDefaultHandlerForDept(Long deptId) {
+        if (deptId == null) return null;
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysUser::getDeptId, deptId);
+        wrapper.eq(SysUser::getRole, "handler");
+        wrapper.eq(SysUser::getStatus, 1);
+        wrapper.last("LIMIT 1");
+        return sysUserMapper.selectOne(wrapper);
     }
 }

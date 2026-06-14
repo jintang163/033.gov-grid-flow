@@ -8,6 +8,8 @@ import java.util.List;
 @Data
 public class NlpDispatchResultVO {
 
+    private Long dispatchRecordId;
+
     private String departmentCode;
 
     private String departmentName;

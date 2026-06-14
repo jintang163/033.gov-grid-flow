@@ -310,7 +310,20 @@ CREATE TABLE `sys_notification` (
 INSERT INTO `sys_dept` (`id`, `name`, `code`, `parent_id`, `leader`, `phone`, `sort`, `status`) VALUES
 (1, '总公司', 'HQ', NULL, '张总', '13800000000', 1, 1),
 (2, '网格管理部', 'GRID', 1, '李部长', '13800000001', 1, 1),
-(3, '事件处置中心', 'EVENT', 1, '王主任', '13800000002', 2, 1);
+(3, '事件处置中心', 'EVENT', 1, '王主任', '13800000002', 2, 1),
+(4, '市政科', 'MUNICIPAL', 3, '赵科', '13800000003', 1, 1),
+(5, '环卫科', 'ENVIRONMENTAL', 3, '钱科', '13800000004', 2, 1),
+(6, '综合执法大队', 'LAW_ENFORCEMENT', 3, '孙队', '13800000005', 3, 1),
+(7, '交通科', 'TRAFFIC', 3, '周科', '13800000006', 4, 1),
+(8, '安监科', 'SAFETY', 3, '吴科', '13800000007', 5, 1),
+(9, '民政科', 'CIVIL_AFFAIRS', 3, '郑科', '13800000008', 6, 1),
+(10, '治安科', 'PUBLIC_SECURITY', 3, '冯科', '13800000009', 7, 1),
+(11, '城管科', 'URBAN_MANAGEMENT', 3, '陈科', '13800000010', 8, 1),
+(12, '水务科', 'WATER', 3, '褚科', '13800000011', 9, 1),
+(13, '园林绿化科', 'GREENING', 3, '卫科', '13800000012', 10, 1),
+(14, '住建科', 'HOUSING', 3, '蒋科', '13800000013', 11, 1),
+(15, '电力科', 'POWER', 3, '沈科', '13800000014', 12, 1),
+(16, '综合协调科', 'OTHER', 3, '韩科', '13800000015', 13, 1);
 
 -- ---------------------------------------------
 -- 网格数据（街道-社区-网格-微网格 四级结构）
@@ -349,8 +362,20 @@ INSERT INTO `sys_user` (`id`, `username`, `password`, `real_name`, `phone`, `ema
 (6, 'worker1',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员王五',   '13900000006', 'worker1@example.com',       1, 'worker',         2, 10),
 (7, 'worker2',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员赵六',   '13900000007', 'worker2@example.com',       1, 'worker',         2, 11),
 (8, 'worker3',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '网格员孙七',   '13900000008', 'worker3@example.com',       1, 'worker',         2, 12),
-(9, 'handler1',      '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '处置员周八',   '13900000009', 'handler1@example.com',      1, 'handler',        3, NULL),
-(10, 'supervisor1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '督查员吴九',   '13900000010', 'supervisor1@example.com',   1, 'supervisor',     1, 1);
+(9, 'handler1',      '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '市政处置员周八',   '13900000009', 'handler1@example.com',      1, 'handler',        4, NULL),
+(10, 'supervisor1',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '督查员吴九',   '13900000010', 'supervisor1@example.com',   1, 'supervisor',     1, 1),
+(11, 'handler_env',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '环卫处置员郑十',   '13900000011', 'handler_env@example.com',   1, 'handler',        5, NULL),
+(12, 'handler_law',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '执法队员冯十一',   '13900000012', 'handler_law@example.com',   1, 'handler',        6, NULL),
+(13, 'handler_tra',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '交通处置员陈十二',   '13900000013', 'handler_tra@example.com',   1, 'handler',        7, NULL),
+(14, 'handler_safe', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '安监处置员褚十三',   '13900000014', 'handler_safe@example.com',  1, 'handler',        8, NULL),
+(15, 'handler_civil','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '民政处置员卫十四',   '13900000015', 'handler_civil@example.com', 1, 'handler',        9, NULL),
+(16, 'handler_police','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '治安处置员蒋十五',  '13900000016', 'handler_police@example.com',1, 'handler',        10, NULL),
+(17, 'handler_urban','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '城管处置员沈十六',   '13900000017', 'handler_urban@example.com', 1, 'handler',        11, NULL),
+(18, 'handler_water','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '水务处置员韩十七',   '13900000018', 'handler_water@example.com', 1, 'handler',        12, NULL),
+(19, 'handler_green','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '绿化处置员杨十八',   '13900000019', 'handler_green@example.com', 1, 'handler',        13, NULL),
+(20, 'handler_house','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '住建处置员朱十九',   '13900000020', 'handler_house@example.com', 1, 'handler',        14, NULL),
+(21, 'handler_power','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '电力处置员秦二十',   '13900000021', 'handler_power@example.com', 1, 'handler',        15, NULL),
+(22, 'handler_other','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '综合协调员尤廿一',   '13900000022', 'handler_other@example.com', 1, 'handler',        16, NULL);
 
 -- 回填网格长ID
 UPDATE `grid_info` SET `grid_leader_id` = 4 WHERE `id` = 6;
@@ -524,6 +549,36 @@ CREATE TABLE `encryption_key` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加密密钥表';
 
 -- ---------------------------------------------
+-- 14. 事件智能分派记录表 event_dispatch_record
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `event_dispatch_record`;
+CREATE TABLE `event_dispatch_record` (
+  `id`                  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_id`            bigint(20) NOT NULL COMMENT '事件ID',
+  `recommended_dept_code` varchar(64)  DEFAULT NULL COMMENT '推荐部门编码',
+  `recommended_dept_name` varchar(128) DEFAULT NULL COMMENT '推荐部门名称',
+  `confidence`          decimal(5,4)   DEFAULT NULL COMMENT '分类置信度(0-1)',
+  `auto_dispatch`       tinyint(1)     DEFAULT 0 COMMENT '是否自动分派(0否1是)',
+  `dispatch_method`     varchar(32)    DEFAULT NULL COMMENT '分类方法(rule/model/hybrid/fallback)',
+  `actual_dept_code`    varchar(64)    DEFAULT NULL COMMENT '实际分派部门编码',
+  `actual_dept_name`    varchar(128)   DEFAULT NULL COMMENT '实际分派部门名称',
+  `status`              varchar(32)    DEFAULT 'RECOMMENDED' COMMENT '状态(RECOMMENDED/AUTO_DISPATCHED/ADOPTED/REJECTED)',
+  `adopted`             tinyint(1)     DEFAULT 0 COMMENT '是否被采纳(0否1是)',
+  `feedback`            varchar(500)   DEFAULT NULL COMMENT '反馈意见',
+  `model_scores`        text           DEFAULT NULL COMMENT '模型各分类得分JSON',
+  `created_by`          bigint(20)     DEFAULT NULL COMMENT '创建人',
+  `created_at`          datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_by`          bigint(20)     DEFAULT NULL COMMENT '更新人',
+  `updated_at`          datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             tinyint(4)     NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_event_id` (`event_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_adopted` (`adopted`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件智能分派记录';
+
+-- ---------------------------------------------
 -- 周边资源示例数据：摄像头
 -- ---------------------------------------------
 INSERT INTO `resource_camera` (`id`, `camera_code`, `camera_name`, `camera_type`, `lng`, `lat`, `address`, `rtsp_url`, `hls_url`, `grid_id`, `manufacturer`, `status`) VALUES
@@ -562,5 +617,139 @@ INSERT INTO `encryption_key` (`key_type`, `key_name`, `key_content`, `key_encryp
 ('RSA_PUBLIC',  '处置中心公钥',     'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB', 0, 3, 1),
 ('RSA_PRIVATE', '处置中心私钥(启动后自动加密存储)', 'MIICXAIBAAKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQABAoGAFijko56+qGyN8M0RVyaRAXz++xTqHBLh3tx4VgMtrQ+WEgCjhoTwo23KMBAuJGSYnRmoBZM3lMfTKevIkAidPExvYCdm5dYq3XToLkkLv5L2pIIVOFMDG+KESnAFV7l2c+cnzRMW0+b6f8mR1CJzZuxVLL6Q02fvLi55/mbSYxECQQDeAw6fiIQXGukBI4eMZZt4nscy2o12KyYner3VpoeE+Np2q+Z3pvAMd/aNzQ/W9WaI+NRfcxUJrmfPwIGm63ilAkEAxCL5HQb2bQr4ByorcMWm/hEP2MZzROV73yF41hPsRC9m66KrheO9HPTJuo3/9s5p+sqGxOlFL0NDt4SkosjgGwJAFklyR1uZ/wPJjj611cdBcztlPdqoxssQGnh85BzCj/u3WqBpE2vjvyyvyI5kX6zk7S0ljKtt2jny2+00VsBerQJBAJGC1Mg5Oydo5NwD6BiROrPxGo2bpTbu/fhrT8ebHkTz2eplU9VQQSQzY1oZMVX8i1m5WUTLPz2yLJIBQVdXqhMCQBGoiuSoSjafUhV7i1cEGpb88h5NBYZzWXGZ37sJ5QsW+sJyoNde3xH8vdXhzU7eT82D6X/scw9RZz+/6rCJ4=', 0, 3, 1),
 ('AES',         '全局AES密钥(启动后自动加密存储)', 'YjA2NDFhOGQwYjQwNDE2MGE2YzRjNTkxNmY3YjQwOWE=', 0, NULL, 1);
+
+-- ---------------------------------------------
+-- NLP智能分派种子训练数据（60条已采纳的分派记录）
+-- ---------------------------------------------
+INSERT INTO `event_dispatch_record` (`id`, `event_id`, `recommended_dept_code`, `recommended_dept_name`, `confidence`, `auto_dispatch`, `dispatch_method`, `actual_dept_code`, `actual_dept_name`, `status`, `adopted`, `feedback`, `model_scores`, `created_at`) VALUES
+-- 市政类
+(1, 5, 'MUNICIPAL', '市政科', 0.92, 1, 'rule', 'MUNICIPAL', '市政科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 09:30:00'),
+(2, 6, 'MUNICIPAL', '市政科', 0.88, 0, 'model', 'MUNICIPAL', '市政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 10:15:00'),
+(3, 7, 'MUNICIPAL', '市政科', 0.95, 1, 'rule', 'MUNICIPAL', '市政科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-17 14:20:00'),
+(4, 8, 'MUNICIPAL', '市政科', 0.90, 1, 'hybrid', 'MUNICIPAL', '市政科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-18 11:45:00'),
+(5, 9, 'MUNICIPAL', '市政科', 0.87, 0, 'rule', 'MUNICIPAL', '市政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 08:30:00'),
+-- 环卫类
+(6, 10, 'ENVIRONMENTAL', '环卫科', 0.93, 1, 'rule', 'ENVIRONMENTAL', '环卫科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 10:00:00'),
+(7, 11, 'ENVIRONMENTAL', '环卫科', 0.91, 1, 'model', 'ENVIRONMENTAL', '环卫科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-16 09:20:00'),
+(8, 12, 'ENVIRONMENTAL', '环卫科', 0.89, 0, 'hybrid', 'ENVIRONMENTAL', '环卫科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 13:45:00'),
+(9, 13, 'ENVIRONMENTAL', '环卫科', 0.94, 1, 'rule', 'ENVIRONMENTAL', '环卫科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-18 15:30:00'),
+(10, 14, 'ENVIRONMENTAL', '环卫科', 0.86, 0, 'rule', 'ENVIRONMENTAL', '环卫科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 11:00:00'),
+-- 城管类
+(11, 15, 'URBAN_MANAGEMENT', '城管科', 0.88, 0, 'rule', 'URBAN_MANAGEMENT', '城管科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-15 11:30:00'),
+(12, 16, 'URBAN_MANAGEMENT', '城管科', 0.92, 1, 'model', 'URBAN_MANAGEMENT', '城管科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-16 14:15:00'),
+(13, 17, 'URBAN_MANAGEMENT', '城管科', 0.90, 0, 'hybrid', 'URBAN_MANAGEMENT', '城管科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 10:45:00'),
+(14, 18, 'URBAN_MANAGEMENT', '城管科', 0.87, 0, 'rule', 'URBAN_MANAGEMENT', '城管科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 09:30:00'),
+(15, 19, 'URBAN_MANAGEMENT', '城管科', 0.91, 1, 'model', 'URBAN_MANAGEMENT', '城管科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-19 14:20:00'),
+-- 交通类
+(16, 20, 'TRAFFIC', '交通科', 0.89, 0, 'rule', 'TRAFFIC', '交通科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-15 14:00:00'),
+(17, 21, 'TRAFFIC', '交通科', 0.93, 1, 'model', 'TRAFFIC', '交通科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-16 11:30:00'),
+(18, 22, 'TRAFFIC', '交通科', 0.86, 0, 'hybrid', 'TRAFFIC', '交通科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 15:00:00'),
+(19, 23, 'TRAFFIC', '交通科', 0.90, 0, 'rule', 'TRAFFIC', '交通科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 14:15:00'),
+(20, 24, 'TRAFFIC', '交通科', 0.88, 0, 'rule', 'TRAFFIC', '交通科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 09:45:00'),
+-- 安监类
+(21, 25, 'SAFETY', '安监科', 0.94, 1, 'rule', 'SAFETY', '安监科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 15:30:00'),
+(22, 26, 'SAFETY', '安监科', 0.91, 0, 'model', 'SAFETY', '安监科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 16:00:00'),
+(23, 27, 'SAFETY', '安监科', 0.89, 0, 'hybrid', 'SAFETY', '安监科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 11:15:00'),
+(24, 28, 'SAFETY', '安监科', 0.92, 1, 'rule', 'SAFETY', '安监科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-18 10:30:00'),
+(25, 29, 'SAFETY', '安监科', 0.87, 0, 'rule', 'SAFETY', '安监科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 15:30:00'),
+-- 民政类
+(26, 30, 'CIVIL_AFFAIRS', '民政科', 0.88, 0, 'rule', 'CIVIL_AFFAIRS', '民政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-15 09:45:00'),
+(27, 31, 'CIVIL_AFFAIRS', '民政科', 0.90, 0, 'model', 'CIVIL_AFFAIRS', '民政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 10:30:00'),
+(28, 32, 'CIVIL_AFFAIRS', '民政科', 0.92, 1, 'hybrid', 'CIVIL_AFFAIRS', '民政科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-17 14:30:00'),
+(29, 33, 'CIVIL_AFFAIRS', '民政科', 0.86, 0, 'rule', 'CIVIL_AFFAIRS', '民政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 15:45:00'),
+(30, 34, 'CIVIL_AFFAIRS', '民政科', 0.91, 0, 'model', 'CIVIL_AFFAIRS', '民政科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 10:15:00'),
+-- 治安类
+(31, 35, 'PUBLIC_SECURITY', '治安科', 0.93, 1, 'rule', 'PUBLIC_SECURITY', '治安科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 16:00:00'),
+(32, 36, 'PUBLIC_SECURITY', '治安科', 0.89, 0, 'model', 'PUBLIC_SECURITY', '治安科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 15:15:00'),
+(33, 37, 'PUBLIC_SECURITY', '治安科', 0.87, 0, 'hybrid', 'PUBLIC_SECURITY', '治安科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 16:30:00'),
+(34, 38, 'PUBLIC_SECURITY', '治安科', 0.90, 0, 'rule', 'PUBLIC_SECURITY', '治安科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 11:00:00'),
+(35, 39, 'PUBLIC_SECURITY', '治安科', 0.92, 1, 'model', 'PUBLIC_SECURITY', '治安科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-19 16:45:00'),
+-- 水务类
+(40, 40, 'WATER', '水务科', 0.91, 1, 'rule', 'WATER', '水务科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 08:15:00'),
+(41, 41, 'WATER', '水务科', 0.88, 0, 'model', 'WATER', '水务科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 09:00:00'),
+(42, 42, 'WATER', '水务科', 0.93, 1, 'hybrid', 'WATER', '水务科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-17 10:00:00'),
+(43, 43, 'WATER', '水务科', 0.89, 0, 'rule', 'WATER', '水务科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 16:00:00'),
+(44, 44, 'WATER', '水务科', 0.87, 0, 'rule', 'WATER', '水务科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 08:45:00'),
+-- 绿化类
+(45, 45, 'GREENING', '园林绿化科', 0.90, 0, 'rule', 'GREENING', '园林绿化科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-15 13:00:00'),
+(46, 46, 'GREENING', '园林绿化科', 0.92, 1, 'model', 'GREENING', '园林绿化科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-16 13:45:00'),
+(47, 47, 'GREENING', '园林绿化科', 0.88, 0, 'hybrid', 'GREENING', '园林绿化科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 09:30:00'),
+(48, 48, 'GREENING', '园林绿化科', 0.86, 0, 'rule', 'GREENING', '园林绿化科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 13:30:00'),
+(49, 49, 'GREENING', '园林绿化科', 0.91, 0, 'model', 'GREENING', '园林绿化科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 13:15:00'),
+-- 住建类
+(50, 50, 'HOUSING', '住建科', 0.89, 0, 'rule', 'HOUSING', '住建科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-15 12:00:00'),
+(51, 51, 'HOUSING', '住建科', 0.91, 0, 'model', 'HOUSING', '住建科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 12:30:00'),
+(52, 52, 'HOUSING', '住建科', 0.87, 0, 'hybrid', 'HOUSING', '住建科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 13:00:00'),
+(53, 53, 'HOUSING', '住建科', 0.90, 0, 'rule', 'HOUSING', '住建科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-18 12:45:00'),
+(54, 54, 'HOUSING', '住建科', 0.88, 0, 'rule', 'HOUSING', '住建科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-19 12:00:00'),
+-- 电力类
+(55, 55, 'POWER', '电力科', 0.92, 1, 'rule', 'POWER', '电力科', 'ADOPTED', 1, '自动分派', NULL, '2024-01-15 17:00:00'),
+(56, 56, 'POWER', '电力科', 0.88, 0, 'model', 'POWER', '电力科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-16 17:30:00'),
+(57, 57, 'POWER', '电力科', 0.90, 0, 'hybrid', 'POWER', '电力科', 'ADOPTED', 1, '一键采纳', NULL, '2024-01-17 17:15:00'),
+-- 综合协调类
+(58, 58, 'OTHER', '综合协调科', 0.75, 0, 'fallback', 'OTHER', '综合协调科', 'ADOPTED', 1, '人工确认', NULL, '2024-01-15 18:00:00'),
+(59, 59, 'OTHER', '综合协调科', 0.78, 0, 'fallback', 'OTHER', '综合协调科', 'ADOPTED', 1, '人工确认', NULL, '2024-01-16 18:30:00'),
+(60, 60, 'OTHER', '综合协调科', 0.72, 0, 'fallback', 'OTHER', '综合协调科', 'ADOPTED', 1, '人工确认', NULL, '2024-01-17 18:00:00');
+
+-- ---------------------------------------------
+-- NLP训练用示例事件数据（与分派记录对应）
+-- ---------------------------------------------
+INSERT INTO `event_info` (`id`, `event_no`, `title`, `event_type`, `description`, `lng`, `lat`, `address`, `anonymous`, `reporter_id`, `grid_id`, `status`, `priority`) VALUES
+(5, 'EV202401150001', '井盖破损严重', 'public_facility', '长安街1号井盖破损，存在安全隐患。', 116.403800, 39.904800, '东长安街1号', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(6, 'EV202401160001', '路灯不亮', 'public_facility', '王府井大街路灯损坏，夜间照明不足。', 116.410800, 39.906800, '王府井大街', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(7, 'EV202401170001', '护栏变形', 'public_facility', '道路护栏被车辆撞变形。', 116.406400, 39.907200, '长安街2号', 0, 8, 11, 'COMPLETED', 'NORMAL'),
+(8, 'EV202401180001', '路面坑洼', 'public_facility', '路面出现大坑洼，影响车辆通行。', 116.404400, 39.905200, '长安街3号', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(9, 'EV202401190001', '消防栓漏水', 'public_facility', '路边消防栓漏水，浪费水资源。', 116.405400, 39.906200, '长安街4号', 0, 7, 10, 'COMPLETED', 'NORMAL'),
+(10, 'EV202401150002', '垃圾满溢', 'environment', '小区垃圾桶满溢，臭气熏天。', 116.403800, 39.904800, '阳光小区', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(11, 'EV202401160002', '公厕卫生差', 'environment', '东城区公厕卫生条件差，需要清理。', 116.410800, 39.906800, '东城区公厕', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(12, 'EV202401170002', '下水道堵塞', 'environment', '居民楼下水道堵塞，污水外流。', 116.406400, 39.907200, '幸福小区', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(13, 'EV202401180002', '道路扬尘', 'environment', '施工路段扬尘严重，影响居民。', 116.404400, 39.905200, '施工路段', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(14, 'EV202401190002', '化粪池外溢', 'environment', '小区化粪池外溢，污染环境。', 116.405400, 39.906200, '和平小区', 0, 7, 10, 'COMPLETED', 'HIGH'),
+(15, 'EV202401150003', '占道经营', 'public_facility', '商贩占道经营，堵塞人行道。', 116.403800, 39.904800, '商业街', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(16, 'EV202401160003', '违建搭建', 'public_facility', '小区内私搭乱建现象严重。', 116.410800, 39.906800, '阳光小区', 0, 7, 12, 'COMPLETED', 'HIGH'),
+(17, 'EV202401170003', '噪音扰民', 'environment', '夜间施工噪音扰民，无法休息。', 116.406400, 39.907200, '施工工地', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(18, 'EV202401180003', '违规广告牌', 'public_facility', '违规设置户外广告牌，影响市容。', 116.404400, 39.905200, '主干道', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(19, 'EV202401190003', '油烟污染', 'environment', '餐饮油烟直排，影响周边居民。', 116.405400, 39.906200, '美食街', 0, 7, 10, 'COMPLETED', 'NORMAL'),
+(20, 'EV202401150004', '交通拥堵', 'traffic', '早高峰主干道交通严重拥堵。', 116.403800, 39.904800, '主干道', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(21, 'EV202401160004', '违停严重', 'traffic', '小区周边车辆乱停乱放。', 116.410800, 39.906800, '小区周边', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(22, 'EV202401170004', '红绿灯故障', 'traffic', '路口红绿灯不亮，交通混乱。', 116.406400, 39.907200, '十字路口', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(23, 'EV202401180004', '路障破损', 'traffic', '道路隔离栏破损，存在安全隐患。', 116.404400, 39.905200, '快速路', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(24, 'EV202401190004', '斑马线模糊', 'traffic', '人行横道斑马线磨损严重，看不清。', 116.405400, 39.906200, '学校门口', 0, 7, 10, 'COMPLETED', 'NORMAL'),
+(25, 'EV202401150005', '燃气泄漏', 'safety_hazard', '居民楼疑似燃气泄漏，有异味。', 116.403800, 39.904800, '居民楼', 0, 6, 10, 'COMPLETED', 'URGENT'),
+(26, 'EV202401160005', '电线裸露', 'safety_hazard', '电线杆电线裸露，有触电危险。', 116.410800, 39.906800, '街道', 0, 7, 12, 'COMPLETED', 'HIGH'),
+(27, 'EV202401170005', '危房开裂', 'safety_hazard', '老旧房屋墙体开裂，有倒塌风险。', 116.406400, 39.907200, '老城区', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(28, 'EV202401180005', '化学品泄漏', 'safety_hazard', '工厂化学品泄漏，需要紧急处理。', 116.404400, 39.905200, '工业园区', 0, 6, 10, 'COMPLETED', 'URGENT'),
+(29, 'EV202401190005', '消防通道堵塞', 'safety_hazard', '小区消防通道被车辆堵塞。', 116.405400, 39.906200, '小区', 0, 7, 10, 'COMPLETED', 'HIGH'),
+(30, 'EV202401150006', '低保申请', 'service', '居民申请低保，需要民政部门协助。', 116.403800, 39.904800, '居委会', 0, 6, 10, 'COMPLETED', 'LOW'),
+(31, 'EV202401160006', '邻里纠纷', 'dispute', '邻居因噪音问题产生矛盾。', 116.410800, 39.906800, '居民楼', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(32, 'EV202401170006', '养老服务咨询', 'service', '咨询社区养老服务相关政策。', 116.406400, 39.907200, '社区服务中心', 0, 8, 11, 'COMPLETED', 'LOW'),
+(33, 'EV202401180006', '残疾人帮扶', 'service', '残疾人家庭需要生活帮扶。', 116.404400, 39.905200, '居民家', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(34, 'EV202401190006', '贫困救助', 'service', '贫困户申请临时救助。', 116.405400, 39.906200, '居委会', 0, 7, 10, 'COMPLETED', 'NORMAL'),
+(35, 'EV202401150007', '偷盗事件', 'security', '小区发生电动车偷盗事件。', 116.403800, 39.904800, '小区停车场', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(36, 'EV202401160007', '打架斗殴', 'security', '街头有人打架斗殴，影响治安。', 116.410800, 39.906800, '街头', 0, 7, 12, 'COMPLETED', 'HIGH'),
+(37, 'EV202401170007', '传销活动', 'security', '疑似传销窝点在小区活动。', 116.406400, 39.907200, '居民楼', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(38, 'EV202401180007', '诈骗事件', 'security', '居民遭遇电信诈骗，已报警。', 116.404400, 39.905200, '居民家', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(39, 'EV202401190007', '聚众赌博', 'security', '有人在公园聚众赌博。', 116.405400, 39.906200, '公园', 0, 7, 10, 'COMPLETED', 'HIGH'),
+(40, 'EV202401150008', '水管爆裂', 'environment', '主水管爆裂，大量漏水。', 116.403800, 39.904800, '主干道', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(41, 'EV202401160008', '高层停水', 'environment', '高层住宅楼水压不足，停水。', 116.410800, 39.906800, '高层小区', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(42, 'EV202401170008', '下水道反水', 'environment', '一楼住户下水道反水严重。', 116.406400, 39.907200, '居民楼', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(43, 'EV202401180008', '水表损坏', 'environment', '居民家水表损坏，需要更换。', 116.404400, 39.905200, '居民家', 0, 6, 10, 'COMPLETED', 'LOW'),
+(44, 'EV202401190008', '路面积水', 'environment', '暴雨后路面积水严重。', 116.405400, 39.906200, '低洼路段', 0, 7, 10, 'COMPLETED', 'NORMAL'),
+(45, 'EV202401150009', '树木倒伏', 'environment', '大风刮倒树木，挡路。', 116.403800, 39.904800, '街道', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(46, 'EV202401160009', '绿化修剪', 'environment', '绿化带树木需要修剪。', 116.410800, 39.906800, '公园', 0, 7, 12, 'COMPLETED', 'LOW'),
+(47, 'EV202401170009', '病虫害', 'environment', '行道树发生病虫害。', 116.406400, 39.907200, '行道树', 0, 8, 11, 'COMPLETED', 'NORMAL'),
+(48, 'EV202401180009', '公园设施损坏', 'environment', '公园健身器材损坏。', 116.404400, 39.905200, '公园', 0, 6, 10, 'COMPLETED', 'NORMAL'),
+(49, 'EV202401190009', '杂草丛生', 'environment', '路边绿化带杂草丛生。', 116.405400, 39.906200, '路边', 0, 7, 10, 'COMPLETED', 'LOW'),
+(50, 'EV202401150010', '房屋裂缝', 'public_facility', '居民楼墙体出现裂缝。', 116.403800, 39.904800, '居民楼', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(51, 'EV202401160010', '屋顶漏水', 'public_facility', '顶层住户屋顶漏水严重。', 116.410800, 39.906800, '顶层住户', 0, 7, 12, 'COMPLETED', 'HIGH'),
+(52, 'EV202401170010', '物业纠纷', 'dispute', '业主与物业公司产生纠纷。', 116.406400, 39.907200, '小区', 0, 8, 11, 'COMPLETED', 'NORMAL'),
+(53, 'EV202401180010', '拆迁咨询', 'service', '咨询拆迁安置相关政策。', 116.404400, 39.905200, '拆迁办', 0, 6, 10, 'COMPLETED', 'LOW'),
+(54, 'EV202401190010', '电梯故障', 'public_facility', '高层电梯频繁故障。', 116.405400, 39.906200, '高层住宅楼', 0, 7, 10, 'COMPLETED', 'HIGH'),
+(55, 'EV202401150011', '突然停电', 'public_facility', '大面积突然停电，原因不明。', 116.403800, 39.904800, '片区', 0, 6, 10, 'COMPLETED', 'HIGH'),
+(56, 'EV202401160011', '变压器冒烟', 'public_facility', '路边变压器冒烟，有焦味。', 116.410800, 39.906800, '路边', 0, 7, 12, 'COMPLETED', 'URGENT'),
+(57, 'EV202401170011', '线路老化', 'public_facility', '老旧小区线路老化严重。', 116.406400, 39.907200, '老旧小区', 0, 8, 11, 'COMPLETED', 'HIGH'),
+(58, 'EV202401150012', '不明事项咨询', 'service', '政策不明确，需要多部门协调。', 116.403800, 39.904800, '服务中心', 0, 6, 10, 'COMPLETED', 'LOW'),
+(59, 'EV202401160012', '跨部门事项', 'service', '涉及多个部门的复杂事项。', 116.410800, 39.906800, '政务大厅', 0, 7, 12, 'COMPLETED', 'NORMAL'),
+(60, 'EV202401170012', '历史遗留问题', 'service', '历史遗留问题，需要协调处理。', 116.406400, 39.907200, '相关部门', 0, 8, 11, 'COMPLETED', 'NORMAL');
 
 SET FOREIGN_KEY_CHECKS = 1;

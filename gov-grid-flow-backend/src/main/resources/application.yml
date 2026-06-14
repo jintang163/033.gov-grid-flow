@@ -108,7 +108,7 @@ nlp:
     enabled: true
     auto-dispatch-enabled: true
     confidence-threshold: 0.8
-    auto-train-enabled: false
+    auto-train-enabled: true
     auto-train-cron: "0 0 2 * * ?"
 
 logging:

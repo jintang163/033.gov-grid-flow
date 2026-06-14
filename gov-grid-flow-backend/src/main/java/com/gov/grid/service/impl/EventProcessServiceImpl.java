@@ -19,6 +19,8 @@ import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
 import com.gov.grid.service.EventUrgeService;
 import com.gov.grid.service.ImageComparisonService;
+import com.gov.grid.service.NlpDispatchService;
+import com.gov.grid.vo.NlpDispatchResultVO;
 import com.gov.grid.workflow.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,7 @@ public class EventProcessServiceImpl implements EventProcessService {
     private final SysUserMapper sysUserMapper;
     private final ImageComparisonService imageComparisonService;
     private final EventUrgeService eventUrgeService;
+    private final NlpDispatchService nlpDispatchService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -130,6 +133,15 @@ public class EventProcessServiceImpl implements EventProcessService {
             if (ProcessAction.APPROVE.getCode().equals(action)) {
                 variables.put("approved", true);
                 eventService.updateEventStatus(dto.getEventId(), EventStatus.APPROVED.getCode());
+                
+                try {
+                    NlpDispatchResultVO recommendResult = nlpDispatchService.classify(
+                            eventInfo.getTitle(), eventInfo.getDescription(), eventInfo.getEventType()
+                    );
+                    nlpDispatchService.autoDispatchIfPossible(dto.getEventId(), recommendResult);
+                } catch (Exception e) {
+                    log.warn("NLP自动分派失败，事件ID：{}，错误：{}", dto.getEventId(), e.getMessage());
+                }
             } else if (ProcessAction.DISPATCH.getCode().equals(action)) {
                 variables.put("dispatched", true);
                 eventService.updateEventStatus(dto.getEventId(), EventStatus.DISPATCHED.getCode());
