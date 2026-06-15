@@ -46,6 +46,24 @@ const routes = [
     name: 'VoiceSettings',
     component: () => import('@/views/profile/voice.vue'),
     meta: { title: '语音播报设置', requiresAuth: true }
+  },
+  {
+    path: '/warning',
+    name: 'Warning',
+    component: () => import('@/views/warning/index.vue'),
+    meta: { title: '预警消息', requiresAuth: true }
+  },
+  {
+    path: '/warning-detail',
+    name: 'WarningDetail',
+    component: () => import('@/views/warning/detail.vue'),
+    meta: { title: '预警详情', requiresAuth: true }
+  },
+  {
+    path: '/warning-grid',
+    name: 'WarningGrid',
+    component: () => import('@/views/warning/grid.vue'),
+    meta: { title: '网格预警', requiresAuth: true }
   }
 ]
 

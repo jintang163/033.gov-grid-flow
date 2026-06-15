@@ -148,3 +148,18 @@ audit:
   file-backup: true
   file-backup-path: ./logs/audit
   readonly-previous-months: true
+
+weather:
+  api:
+    enabled: true
+    mock: true
+    provider: qweather
+    base-url: https://devapi.qweather.com/v7
+    key: ""
+    timeout: 10000
+
+warning:
+  cron: "0 0 8,12,18 * * ?"
+  heat-threshold: 60
+  push-to-all-members: true
+  forecast-days: 14

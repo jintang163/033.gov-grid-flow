@@ -13,7 +13,7 @@
               <label class="filter-label">选择网格</label>
               <el-select
                 v-model="selectedGridId"
-                placeholder="全部网格"
+                placeholder="全部网格（聚合）"
                 clearable
                 style="width: 100%"
                 @change="handleGridChange"
@@ -25,6 +25,13 @@
                   :value="grid.id"
                 />
               </el-select>
+            </div>
+            <div class="filter-item">
+              <label class="filter-label">展示模式</label>
+              <el-radio-group v-model="displayMode" size="default" @change="handleDisplayModeChange">
+                <el-radio-button value="combined">历史+预测</el-radio-button>
+                <el-radio-button value="forecast">仅预测</el-radio-button>
+              </el-radio-group>
             </div>
             <div class="filter-item">
               <label class="filter-label">预警等级</label>
@@ -44,6 +51,12 @@
                 <div class="legend-item">
                   <span class="legend-color critical"></span>
                   <span class="legend-text">极高风险</span>
+                </div>
+              </div>
+              <div class="legend-desc">
+                <div class="mode-item">
+                  <span class="mode-hash"></span>
+                  <span class="mode-text">未来预测日期</span>
                 </div>
               </div>
             </div>
@@ -87,7 +100,7 @@
         <el-card shadow="hover" class="calendar-card" :body-style="{ padding: '16px' }">
           <template #header>
             <div class="card-header">
-              <span class="header-title">事件热度日历热力图</span>
+              <span class="header-title">事件热度日历热力图 <el-tag size="small" type="info" effect="plain">含未来{{ forecastDays }}天预测</el-tag></span>
               <div class="header-actions">
                 <el-button size="small" @click="prevMonth">
                   <el-icon><ArrowLeft /></el-icon>
@@ -108,6 +121,9 @@
               <template #header>
                 <div class="card-header">
                   <span class="header-title">选中日期详情</span>
+                  <el-tag v-if="selectedDateData" size="small" :type="isFutureDate(selectedDateData.date) ? 'warning' : 'info'" effect="plain">
+                    {{ isFutureDate(selectedDateData.date) ? '预测数据' : '历史数据' }}
+                  </el-tag>
                 </div>
               </template>
               <div v-if="selectedDateData" class="date-detail">
@@ -119,7 +135,7 @@
                   </span>
                 </div>
                 <div class="detail-count">
-                  <span class="count-label">事件数量</span>
+                  <span class="count-label">{{ isFutureDate(selectedDateData.date) ? '预计事件' : '事件数量' }}</span>
                   <span class="count-value">{{ selectedDateData.eventCount || 0 }} 件</span>
                 </div>
                 <div class="detail-grid">
@@ -223,6 +239,7 @@ import {
 import { getGridAll } from '@/api/grid'
 
 const selectedGridId = ref(null)
+const displayMode = ref('combined')
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth() + 1)
 const gridList = ref([])
@@ -230,6 +247,7 @@ const highWarningGrids = ref([])
 const calendarData = ref([])
 const selectedDateData = ref(null)
 const forecastData = ref(null)
+const forecastDays = ref(14)
 
 const calendarChartRef = ref()
 const forecastTypeChartRef = ref()
@@ -240,6 +258,18 @@ let forecastTypeChart = null
 const currentMonthLabel = computed(() => {
   return `${currentYear.value}年${currentMonth.value}月`
 })
+
+const today = computed(() => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+})
+
+function isFutureDate(dateStr) {
+  return dateStr > today.value
+}
 
 function getHeatLevelTagType(level) {
   switch (level) {
@@ -282,7 +312,11 @@ async function loadCalendarHeatmap() {
       currentMonth.value,
       selectedGridId.value
     )
-    calendarData.value = res.data || []
+    let rawData = res.data || []
+    if (displayMode.value === 'forecast') {
+      rawData = rawData.filter(d => isFutureDate(d.date))
+    }
+    calendarData.value = rawData
     nextTick(() => {
       initCalendarChart()
     })
@@ -317,7 +351,8 @@ function initCalendarChart() {
   if (calendarChart) calendarChart.dispose()
   calendarChart = echarts.init(calendarChartRef.value)
 
-  const data = calendarData.value.map(item => [item.date, item.heatValue || 0])
+  const heatData = calendarData.value.map(item => [item.date, item.heatValue || 0])
+  const futureDates = calendarData.value.filter(d => isFutureDate(d.date)).map(d => d.date)
 
   const option = {
     tooltip: {
@@ -330,19 +365,22 @@ function initCalendarChart() {
         else if (value < 60) levelText = '中风险'
         else if (value < 85) levelText = '高风险'
         else levelText = '极高风险'
+        const dataType = isFutureDate(date) ? '<span style="color:#E6A23C">[预测]</span>' : '<span style="color:#909399">[历史]</span>'
         return `
           <div style="padding: 8px;">
-            <div style="font-weight: bold; margin-bottom: 4px;">${date}</div>
+            <div style="font-weight: bold; margin-bottom: 4px;">${dataType} ${date}</div>
             <div>热度值: ${value}</div>
             <div>风险等级: ${levelText}</div>
             <div>事件数量: ${item?.eventCount || 0} 件</div>
+            <div>网格: ${item?.gridName || '全部网格'}</div>
           </div>
         `
       },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: '#e4e7ed',
       borderWidth: 1,
-      textStyle: { color: '#303133' }
+      textStyle: { color: '#303133' },
+      extraCssText: 'box-shadow: 0 2px 12px rgba(0,0,0,0.1);'
     },
     visualMap: {
       show: true,
@@ -355,14 +393,16 @@ function initCalendarChart() {
       inRange: {
         color: ['#e1f3d8', '#67C23A', '#E6A23C', '#F56C6C', '#C0392B']
       },
-      text: ['高', '低'],
-      textStyle: { color: '#606266' }
+      text: ['高热度', '低热度'],
+      textStyle: { color: '#606266' },
+      itemWidth: 20,
+      itemHeight: 140
     },
     calendar: {
-      top: 50,
+      top: 40,
       left: 50,
       right: 50,
-      cellSize: ['auto', 40],
+      cellSize: ['auto', 45],
       range: [`${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`],
       itemStyle: {
         borderWidth: 2,
@@ -372,7 +412,8 @@ function initCalendarChart() {
       monthLabel: { show: false },
       dayLabel: {
         nameMap: 'ZH',
-        color: '#606266'
+        color: '#606266',
+        fontSize: 12
       },
       splitLine: {
         show: true,
@@ -386,15 +427,38 @@ function initCalendarChart() {
       {
         type: 'heatmap',
         coordinateSystem: 'calendar',
-        data: data,
+        data: heatData,
+        itemStyle: {
+          borderRadius: 2
+        },
         emphasis: {
           itemStyle: {
             shadowBlur: 10,
-            shadowColor: 'rgba(0, 0, 0, 0.3)'
+            shadowColor: 'rgba(0, 0, 0, 0.3)',
+            borderColor: '#409EFF',
+            borderWidth: 2
           }
         }
       }
-    ]
+    ],
+    graphic: futureDates.length > 0 ? futureDates.map(date => {
+      const dateObj = new Date(date)
+      const day = dateObj.getDate()
+      return {
+        type: 'text',
+        left: 100 + ((day - 1) % 7) * 55,
+        top: 60 + Math.floor((day - 1) / 7) * 50,
+        style: {
+          text: '▨',
+          fill: 'rgba(255, 193, 7, 0.6)',
+          fontSize: 28,
+          textAlign: 'center',
+          textVerticalAlign: 'middle'
+        },
+        silent: true,
+        z: 10
+      }
+    }) : []
   }
 
   calendarChart.setOption(option)
@@ -427,11 +491,13 @@ function initForecastTypeChart() {
       formatter: function (params) {
         const data = params[0]
         const typeData = topTypes.find(t => t.eventTypeName === data.name)
+        const trendText = { up: '↑ 上升', down: '↓ 下降', stable: '→ 稳定' }[typeData?.trend] || '→ 稳定'
         return `
           <div style="padding: 4px;">
             <div style="font-weight: bold;">${data.name}</div>
             <div>概率: ${(typeData?.probability || 0).toFixed(2)}%</div>
             <div>预计数量: ${typeData?.predictedCount || 0} 件</div>
+            <div>趋势: ${trendText}</div>
           </div>
         `
       }
@@ -445,9 +511,10 @@ function initForecastTypeChart() {
     },
     xAxis: {
       type: 'value',
+      max: 100,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#909399' },
+      axisLabel: { color: '#909399', formatter: '{value}%' },
       splitLine: { lineStyle: { color: '#f0f2f5', type: 'dashed' } }
     },
     yAxis: {
@@ -460,21 +527,39 @@ function initForecastTypeChart() {
     series: [
       {
         type: 'bar',
-        data: topTypes.map(t => t.probability || 0),
-        barWidth: '50%',
+        data: topTypes.map(t => ({
+          value: t.probability || 0,
+          itemStyle: {
+            color: t.trend === 'up'
+              ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: '#ff8a65' },
+                  { offset: 1, color: '#f56c6c' }
+                ])
+              : t.trend === 'down'
+              ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: '#67c23a' },
+                  { offset: 1, color: '#95d475' }
+                ])
+              : new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: '#66b1ff' },
+                  { offset: 1, color: '#409EFF' }
+                ])
+          }
+        })),
+        barWidth: '55%',
         itemStyle: {
-          borderRadius: [0, 4, 4, 0],
-          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: '#66b1ff' },
-            { offset: 1, color: '#409EFF' }
-          ])
+          borderRadius: [0, 4, 4, 0]
         },
         label: {
           show: true,
           position: 'right',
           color: '#606266',
           fontSize: 12,
-          formatter: '{c}%'
+          formatter: function (params) {
+            const typeData = topTypes[params.dataIndex]
+            const trendIcon = { up: '↑', down: '↓', stable: '→' }[typeData?.trend] || '→'
+            return `${params.value}% ${trendIcon}`
+          }
         }
       }
     ]
@@ -486,6 +571,10 @@ function initForecastTypeChart() {
 function handleGridChange() {
   loadCalendarHeatmap()
   loadForecastData()
+}
+
+function handleDisplayModeChange() {
+  loadCalendarHeatmap()
 }
 
 function handleSelectGrid(gridId) {
@@ -520,7 +609,7 @@ async function handlePushNotification() {
   }
   try {
     await pushWarningNotification(selectedGridId.value)
-    ElMessage.success('预警通知推送成功')
+    ElMessage.success('预警通知推送成功，已发送至网格全体网格员')
   } catch (e) {
     ElMessage.error('预警通知推送失败')
   }
@@ -571,6 +660,9 @@ onBeforeUnmount(() => {
       color: #303133;
       position: relative;
       padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
       &::before {
         content: '';
@@ -657,6 +749,34 @@ onBeforeUnmount(() => {
         }
       }
     }
+
+    .legend-desc {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #e4e7ed;
+
+      .mode-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .mode-hash {
+          width: 16px;
+          height: 16px;
+          background: rgba(255, 193, 7, 0.6);
+          color: #fff;
+          text-align: center;
+          line-height: 16px;
+          font-size: 14px;
+          border-radius: 3px;
+        }
+
+        .mode-text {
+          font-size: 12px;
+          color: #606266;
+        }
+      }
+    }
   }
 
   .high-warning-card {
@@ -730,7 +850,7 @@ onBeforeUnmount(() => {
 
   .calendar-card {
     .calendar-chart {
-      height: 320px;
+      height: 380px;
       width: 100%;
     }
   }
@@ -877,6 +997,7 @@ onBeforeUnmount(() => {
             justify-content: center;
             align-items: center;
             color: #fff;
+            flex-shrink: 0;
 
             &.score-1 {
               background: linear-gradient(135deg, #67C23A 0%, #85ce61 100%);
@@ -944,7 +1065,7 @@ onBeforeUnmount(() => {
           .suggestion-content {
             font-size: 13px;
             color: #606266;
-            line-height: 1.6;
+            line-height: 1.7;
           }
         }
 
@@ -957,7 +1078,7 @@ onBeforeUnmount(() => {
           }
 
           .types-chart {
-            height: 200px;
+            height: 220px;
             width: 100%;
           }
         }

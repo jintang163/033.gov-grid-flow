@@ -8,9 +8,14 @@
         </div>
       </template>
       <template #right>
-        <div class="notify-wrap" @click="goNotifications">
-          <van-icon name="bell-o" size="22" />
-          <van-badge v-if="unreadCount > 0" :content="unreadCount" class="notify-badge" />
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <div class="warning-wrap" @click="goWarning">
+            <van-icon name="warning-o" size="20" color="#ee0a24" />
+          </div>
+          <div class="notify-wrap" @click="goNotifications">
+            <van-icon name="bell-o" size="22" />
+            <van-badge v-if="unreadCount > 0" :content="unreadCount" class="notify-badge" />
+          </div>
         </div>
       </template>
     </van-nav-bar>
@@ -54,6 +59,7 @@
         <van-grid :column-num="4" border class="quick-grid">
           <van-grid-item icon="add-o" text="事件上报" @click="goReport" />
           <van-grid-item icon="todo-list-o" text="待办事项" @click="goTodo" />
+          <van-grid-item icon="warning-o" :badge="unreadCount > 0 ? unreadCount : null" text="预警消息" @click="goWarning" />
           <van-grid-item icon="scan" text="扫码上报" @click="goScan" />
           <van-grid-item icon="location-o" text="地图浏览" @click="goMap" />
           <van-grid-item icon="log" text="事件记录" @click="goEventList" />
@@ -294,7 +300,8 @@ const goMap = () => showToast('地图浏览功能')
 const goScan = () => showToast('扫码上报功能')
 const goEventList = () => router.push('/todo')
 const goStatistics = () => showToast('统计分析功能')
-const goNotifications = () => showToast('通知列表功能')
+const goNotifications = () => router.push('/warning')
+const goWarning = () => router.push('/warning')
 const goMyReport = () => router.push('/todo')
 const goMyDone = () => router.push('/todo')
 
