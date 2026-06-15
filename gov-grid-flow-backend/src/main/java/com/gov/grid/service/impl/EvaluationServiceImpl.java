@@ -66,7 +66,8 @@ public class EvaluationServiceImpl implements EvaluationService {
         if (dto.getContent() != null && !dto.getContent().trim().isEmpty()) {
             try {
                 SentimentAnalysisService.SentimentResult sentimentResult =
-                        sentimentAnalysisService.analyze(dto.getContent());
+                        sentimentAnalysisService.analyzeWithScores(dto.getContent(),
+                                dto.getSpeedScore(), dto.getEffectScore());
                 evaluation.setSentimentLabel(sentimentResult.getLabel());
                 evaluation.setSentimentScore(sentimentResult.getScore());
                 evaluation.setWarningLevel(sentimentResult.getWarningLevel());
@@ -79,9 +80,10 @@ public class EvaluationServiceImpl implements EvaluationService {
                 evaluation.setKeywords(keywordsStr);
 
                 evaluationMapper.updateById(evaluation);
-                log.info("评价情感分析完成，事件ID：{}，情感：{}，分数：{}，预警：{}",
+                log.info("评价情感分析完成，事件ID：{}，情感：{}，分数：{}，预警：{}，速度：{}，效果：{}",
                         dto.getEventId(), sentimentResult.getLabel(),
-                        sentimentResult.getScore(), sentimentResult.getWarningLevel());
+                        sentimentResult.getScore(), sentimentResult.getWarningLevel(),
+                        dto.getSpeedScore(), dto.getEffectScore());
             } catch (Exception e) {
                 log.warn("评价情感分析失败，事件ID：{}，错误：{}", dto.getEventId(), e.getMessage());
             }

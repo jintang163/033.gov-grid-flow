@@ -109,6 +109,16 @@ urge:
 nlp:
   service:
     url: http://localhost:8001
+  sentiment:
+    enabled: true
+    provider: baidu
+  baidu:
+    client-id: 
+    client-secret: 
+  xunfei:
+    app-id: 
+    api-key: 
+    api-secret: 
   dispatch:
     enabled: true
     auto-dispatch-enabled: true
