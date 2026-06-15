@@ -1,5 +1,6 @@
 package com.gov.grid.controller;
 
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.Result;
 import com.gov.grid.service.BlockchainEvidenceService;
@@ -24,6 +25,7 @@ public class BlockchainEvidenceController {
     @ApiOperation("创建区块链存证")
     @PostMapping("/create/{eventId}")
     @PreAuthorize("hasRole('admin') or hasRole('grid_leader') or hasRole('street_manager')")
+    @AuditLog(module = "blockchain", operation = "create", description = "创建区块链存证")
     public Result<BlockchainEvidenceVO> createEvidence(@PathVariable Long eventId) {
         BlockchainEvidenceVO evidence = blockchainEvidenceService.createEvidence(eventId);
         return Result.success("存证创建成功", evidence);
@@ -72,6 +74,7 @@ public class BlockchainEvidenceController {
 
     @ApiOperation("核验存证")
     @PostMapping("/verify/{evidenceId}")
+    @AuditLog(module = "blockchain", operation = "verify", description = "核验区块链存证")
     public Result<Map<String, Object>> verifyEvidence(@PathVariable Long evidenceId) {
         Map<String, Object> result = blockchainEvidenceService.verifyEvidence(evidenceId);
         boolean valid = result.get("valid") != null && (Boolean) result.get("valid");

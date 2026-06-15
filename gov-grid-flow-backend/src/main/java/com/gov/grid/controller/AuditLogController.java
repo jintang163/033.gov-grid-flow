@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
 
 @Api(tags = "审计日志管理")
 @RestController
@@ -39,9 +40,21 @@ public class AuditLogController {
         auditLogService.exportPdf(queryDTO, response);
     }
 
-    @ApiOperation("验证日志完整性")
+    @ApiOperation("验证单条日志自哈希完整性")
     @GetMapping("/verify/{id}")
     public Result<Boolean> verifyLogIntegrity(@PathVariable String id) {
         return Result.success(auditLogService.verifyLogIntegrity(id));
+    }
+
+    @ApiOperation("从指定日志向上校验完整哈希链")
+    @GetMapping("/verify-chain/{id}")
+    public Result<Map<String, Object>> verifyChainFromId(@PathVariable String id) {
+        return Result.success(auditLogService.verifyChainFromId(id));
+    }
+
+    @ApiOperation("全局校验：从最新日志追溯到创世日志的完整哈希链")
+    @PostMapping("/verify-all")
+    public Result<Map<String, Object>> verifyAllLogsIntegrity() {
+        return Result.success(auditLogService.verifyAllLogsIntegrity());
     }
 }

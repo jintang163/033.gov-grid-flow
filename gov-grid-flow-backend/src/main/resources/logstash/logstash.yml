@@ -1,0 +1,38 @@
+# ============================================================
+# Logstash 全局配置
+# ============================================================
+
+# 节点名称
+node.name: logstash-audit-node-1
+
+# 管道配置
+pipeline:
+  batch:
+    size: 500
+    delay: 50
+
+# 持久化队列（防止内存队列丢失）
+queue:
+  type: persisted
+  max_bytes: 1gb
+  path: ./data/queue/audit
+
+# 死信队列（处理失败的消息）
+dead_letter_queue:
+  enable: true
+  path: ./data/dead_letter_queue/audit
+
+# 路径配置
+path:
+  data: ./data
+  logs: ./logs/logstash
+  config: ./config
+
+# 日志级别
+log.level: info
+
+# HTTP API（监控用）
+api:
+  http:
+    host: "127.0.0.1"
+    port: 9600

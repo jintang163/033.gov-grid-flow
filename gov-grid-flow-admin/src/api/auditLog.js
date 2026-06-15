@@ -30,3 +30,17 @@ export function verifyLogIntegrity(id) {
     method: 'get'
   })
 }
+
+export function verifyChainFromId(id) {
+  return request({
+    url: `/audit-log/verify-chain/${id}`,
+    method: 'get'
+  })
+}
+
+export function verifyAllLogsIntegrity() {
+  return request({
+    url: '/audit-log/verify-all',
+    method: 'post'
+  })
+}

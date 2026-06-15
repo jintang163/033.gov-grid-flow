@@ -1,5 +1,6 @@
 package com.gov.grid.controller;
 
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.Result;
 import com.gov.grid.entity.GridInfo;
@@ -76,6 +77,7 @@ public class GridController {
     @ApiOperation("新增网格")
     @PostMapping
     @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
+    @AuditLog(module = "grid", operation = "create", description = "新增网格")
     public Result<GridInfo> create(@RequestBody GridInfo gridInfo) {
         GridInfo created = gridService.create(gridInfo);
         return Result.success(created);
@@ -84,6 +86,7 @@ public class GridController {
     @ApiOperation("修改网格")
     @PutMapping
     @PreAuthorize("hasRole('admin') or hasRole('street_manager')")
+    @AuditLog(module = "grid", operation = "update", description = "修改网格")
     public Result<GridInfo> update(@RequestBody GridInfo gridInfo) {
         GridInfo updated = gridService.update(gridInfo);
         return Result.success(updated);
@@ -92,6 +95,7 @@ public class GridController {
     @ApiOperation("删除网格")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('admin')")
+    @AuditLog(module = "grid", operation = "delete", description = "删除网格")
     public Result<Void> delete(@PathVariable Long id) {
         gridService.delete(id);
         return Result.success();

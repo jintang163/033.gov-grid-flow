@@ -1,5 +1,6 @@
 package com.gov.grid.controller;
 
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.Result;
 import com.gov.grid.entity.EventInfo;
@@ -44,6 +45,7 @@ public class EventUrgeController {
     @ApiOperation("新增催办规则")
     @PostMapping("/rule")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "create", description = "新增催办规则")
     public Result<EventUrgeRule> saveRule(@RequestBody EventUrgeRule rule) {
         EventUrgeRule saved = eventUrgeService.saveRule(rule);
         return Result.success("规则新增成功", saved);
@@ -52,6 +54,7 @@ public class EventUrgeController {
     @ApiOperation("修改催办规则")
     @PutMapping("/rule")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "update", description = "修改催办规则")
     public Result<EventUrgeRule> updateRule(@RequestBody EventUrgeRule rule) {
         EventUrgeRule updated = eventUrgeService.updateRule(rule);
         return Result.success("规则修改成功", updated);
@@ -60,6 +63,7 @@ public class EventUrgeController {
     @ApiOperation("删除催办规则")
     @DeleteMapping("/rule/{id}")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "delete", description = "删除催办规则")
     public Result<Boolean> deleteRule(@PathVariable Long id) {
         boolean deleted = eventUrgeService.deleteRule(id);
         return Result.success(deleted ? "删除成功" : "删除失败", deleted);
@@ -83,6 +87,7 @@ public class EventUrgeController {
     @ApiOperation("新增催办模板")
     @PostMapping("/template")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "create", description = "新增催办模板")
     public Result<EventUrgeTemplate> saveTemplate(@RequestBody EventUrgeTemplate template) {
         EventUrgeTemplate saved = eventUrgeService.saveTemplate(template);
         return Result.success("模板新增成功", saved);
@@ -91,6 +96,7 @@ public class EventUrgeController {
     @ApiOperation("修改催办模板")
     @PutMapping("/template")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "update", description = "修改催办模板")
     public Result<EventUrgeTemplate> updateTemplate(@RequestBody EventUrgeTemplate template) {
         EventUrgeTemplate updated = eventUrgeService.updateTemplate(template);
         return Result.success("模板修改成功", updated);
@@ -99,6 +105,7 @@ public class EventUrgeController {
     @ApiOperation("删除催办模板")
     @DeleteMapping("/template/{id}")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "delete", description = "删除催办模板")
     public Result<Boolean> deleteTemplate(@PathVariable Long id) {
         boolean deleted = eventUrgeService.deleteTemplate(id);
         return Result.success(deleted ? "删除成功" : "删除失败", deleted);
@@ -129,6 +136,7 @@ public class EventUrgeController {
     @ApiOperation("手动执行催办扫描")
     @PostMapping("/scan")
     @PreAuthorize("hasAnyRole('admin','street_manager')")
+    @AuditLog(module = "urge", operation = "execute", description = "手动执行催办扫描")
     public Result<Integer> scanAndUrge() {
         int count = eventUrgeService.scanAndUrge();
         return Result.success("扫描完成，处理了" + count + "个事件", count);
@@ -137,6 +145,7 @@ public class EventUrgeController {
     @ApiOperation("升级督办")
     @PostMapping("/escalate/{eventId}")
     @PreAuthorize("hasAnyRole('admin','street_manager','grid_leader')")
+    @AuditLog(module = "urge", operation = "escalate", description = "升级督办")
     public Result<Boolean> escalateEvent(@PathVariable Long eventId) {
         EventInfo event = eventService.getEventById(eventId);
         if (event == null) {

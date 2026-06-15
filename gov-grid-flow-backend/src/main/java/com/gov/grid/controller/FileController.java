@@ -3,6 +3,7 @@ package com.gov.grid.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.Result;
 import com.gov.grid.common.exception.BusinessException;
 import com.gov.grid.dto.DigitalEnvelopeDTO;
@@ -42,6 +43,7 @@ public class FileController {
 
     @ApiOperation("上传文件")
     @PostMapping("/upload")
+    @AuditLog(module = "file", operation = "upload", description = "上传文件")
     public Result<List<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         List<String> fileUrls = fileService.uploadFiles(files);
         return Result.success("文件上传成功", fileUrls);

@@ -101,6 +101,11 @@ urge:
   default-warning-ratio: 0.20
   escalate-after-hours: 24
 
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 10s
+    read-timeout: 30s
+
 nlp:
   service:
     url: http://localhost:8001
@@ -110,11 +115,6 @@ nlp:
     confidence-threshold: 0.8
     auto-train-enabled: true
     auto-train-cron: "0 0 2 * * ?"
-
-  elasticsearch:
-    uris: http://localhost:9200
-    connection-timeout: 10s
-    read-timeout: 30s
 
 blockchain:
   mock: true
@@ -133,3 +133,8 @@ audit:
   enabled: true
   retention-years: 2
   hash-salt: gov-grid-flow-audit-log-salt-2024
+  es-write-enabled: true
+  mq-enabled: true
+  file-backup: true
+  file-backup-path: ./logs/audit
+  readonly-previous-months: true

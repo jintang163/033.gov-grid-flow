@@ -3,8 +3,15 @@
   "settings": {
     "number_of_shards": 3,
     "number_of_replicas": 1,
+    "auto_expand_replicas": "0-3",
     "index.lifecycle.name": "audit-log-policy",
     "index.lifecycle.rollover_alias": "audit_log",
+    "index.blocks.metadata": false,
+    "index.blocks.read": false,
+    "index.blocks.write": false,
+    "index.blocks.read_only": false,
+    "index.mapping.ignore_malformed": true,
+    "index.max_result_window": 100000,
     "analysis": {
       "analyzer": {
         "ik_max_word": {
@@ -17,6 +24,10 @@
     }
   },
   "mappings": {
+    "_source": {
+      "enabled": true,
+      "compress": true
+    },
     "properties": {
       "id": {
         "type": "keyword"
@@ -85,5 +96,8 @@
         "format": "yyyy-MM-dd HH:mm:ss||epoch_millis"
       }
     }
+  },
+  "aliases": {
+    "audit_log_all": {}
   }
 }

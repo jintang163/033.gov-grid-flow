@@ -8,6 +8,7 @@ import com.gov.grid.vo.AuditLogVO;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public interface AuditLogService {
 
@@ -23,5 +24,7 @@ public interface AuditLogService {
 
     boolean verifyLogIntegrity(String id);
 
-    void verifyAllLogsIntegrity();
+    Map<String, Object> verifyChainFromId(String id);
+
+    Map<String, Object> verifyAllLogsIntegrity();
 }
