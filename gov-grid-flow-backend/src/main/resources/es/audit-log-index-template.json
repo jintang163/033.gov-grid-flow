@@ -1,0 +1,89 @@
+{
+  "index_patterns": ["audit_log-*"],
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "index.lifecycle.name": "audit-log-policy",
+    "index.lifecycle.rollover_alias": "audit_log",
+    "analysis": {
+      "analyzer": {
+        "ik_max_word": {
+          "type": "ik_max_word"
+        },
+        "ik_smart": {
+          "type": "ik_smart"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "eventId": {
+        "type": "keyword"
+      },
+      "userId": {
+        "type": "keyword"
+      },
+      "username": {
+        "type": "keyword"
+      },
+      "userRole": {
+        "type": "keyword"
+      },
+      "operation": {
+        "type": "keyword"
+      },
+      "module": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "method": {
+        "type": "keyword"
+      },
+      "requestUri": {
+        "type": "keyword"
+      },
+      "ipAddress": {
+        "type": "keyword"
+      },
+      "userAgent": {
+        "type": "keyword"
+      },
+      "requestParams": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "responseResult": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "errorMsg": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "costTime": {
+        "type": "long"
+      },
+      "previousHash": {
+        "type": "keyword"
+      },
+      "currentHash": {
+        "type": "keyword"
+      },
+      "createdAt": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss||epoch_millis"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 package com.gov.grid.controller;
 
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.PageResult;
 import com.gov.grid.common.Result;
 import com.gov.grid.dto.BatchSyncRequestDTO;
@@ -10,7 +11,6 @@ import com.gov.grid.dto.EventReportDTO;
 import com.gov.grid.entity.EventInfo;
 import com.gov.grid.enums.EventStatus;
 import com.gov.grid.enums.ProcessAction;
-import com.gov.grid.common.PageResult;
 import com.gov.grid.entity.EventUrgeRecord;
 import com.gov.grid.service.EventProcessService;
 import com.gov.grid.service.EventService;
@@ -41,6 +41,7 @@ public class EventController {
 
     @ApiOperation("上报事件（移动端/网格员）")
     @PostMapping("/report")
+    @AuditLog(module = "event", operation = "create", description = "上报事件")
     public Result<EventInfo> reportEvent(@Validated @RequestBody EventReportDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         boolean async = request.getHeader("X-Async") != null && "true".equalsIgnoreCase(request.getHeader("X-Async"));
@@ -50,6 +51,7 @@ public class EventController {
 
     @ApiOperation("批量同步上报（离线数据同步）")
     @PostMapping("/batch-sync")
+    @AuditLog(module = "event", operation = "create", description = "批量同步上报事件")
     public Result<BatchSyncResponseDTO> batchSync(@Validated @RequestBody BatchSyncRequestDTO dto,
                                                   HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
@@ -211,6 +213,7 @@ public class EventController {
     @ApiOperation("审核通过")
     @PostMapping("/approve")
     @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
+    @AuditLog(module = "event", operation = "approve", description = "审核通过事件")
     public Result<Void> approve(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.APPROVE.getCode());
@@ -221,6 +224,7 @@ public class EventController {
     @ApiOperation("核查通过")
     @PostMapping("/verify")
     @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('supervisor')")
+    @AuditLog(module = "event", operation = "verify", description = "核查事件")
     public Result<Void> verify(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.VERIFY.getCode());
@@ -231,6 +235,7 @@ public class EventController {
     @ApiOperation("处置完成")
     @PostMapping("/process")
     @PreAuthorize("hasRole('admin') or hasRole('handler')")
+    @AuditLog(module = "event", operation = "handle", description = "处置完成事件")
     public Result<Void> process(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.HANDLE.getCode());
@@ -241,6 +246,7 @@ public class EventController {
     @ApiOperation("退回")
     @PostMapping("/return")
     @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
+    @AuditLog(module = "event", operation = "reject", description = "退回事件")
     public Result<Void> returnTask(@RequestBody EventProcessDTO dto, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         dto.setAction(ProcessAction.REJECT.getCode());
@@ -251,6 +257,7 @@ public class EventController {
     @ApiOperation("分派")
     @PostMapping("/assign")
     @PreAuthorize("hasRole('admin') or hasRole('street_manager') or hasRole('grid_leader')")
+    @AuditLog(module = "event", operation = "dispatch", description = "分派事件")
     public Result<Void> assignTask(@RequestBody Map<String, Object> params, HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         Long eventId = Long.valueOf(params.get("eventId").toString());

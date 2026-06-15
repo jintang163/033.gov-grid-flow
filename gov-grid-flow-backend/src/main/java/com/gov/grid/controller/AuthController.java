@@ -1,5 +1,6 @@
 package com.gov.grid.controller;
 
+import com.gov.grid.annotation.AuditLog;
 import com.gov.grid.common.Result;
 import com.gov.grid.dto.LoginDTO;
 import com.gov.grid.entity.SysUser;
@@ -31,6 +32,7 @@ public class AuthController {
 
     @ApiOperation("用户名密码登录")
     @PostMapping("/login")
+    @AuditLog(module = "auth", operation = "login", description = "用户登录", recordParams = false)
     public Result<LoginVO> login(@Validated @RequestBody LoginDTO loginDTO) {
         LoginVO loginVO = authService.login(loginDTO);
         return Result.success(loginVO);
@@ -38,6 +40,7 @@ public class AuthController {
 
     @ApiOperation("登出")
     @PostMapping("/logout")
+    @AuditLog(module = "auth", operation = "logout", description = "用户登出")
     public Result<Void> logout(HttpServletRequest request) {
         String token = extractToken(request);
         authService.logout(token);

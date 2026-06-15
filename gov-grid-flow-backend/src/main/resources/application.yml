@@ -111,6 +111,11 @@ nlp:
     auto-train-enabled: true
     auto-train-cron: "0 0 2 * * ?"
 
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 10s
+    read-timeout: 30s
+
 blockchain:
   mock: true
   chain-name: 司法联盟链
@@ -123,3 +128,8 @@ logging:
     root: info
     com.gov.grid: debug
     org.flowable: info
+
+audit:
+  enabled: true
+  retention-years: 2
+  hash-salt: gov-grid-flow-audit-log-salt-2024

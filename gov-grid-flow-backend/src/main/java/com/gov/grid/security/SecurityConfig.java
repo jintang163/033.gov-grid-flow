@@ -58,6 +58,7 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js").permitAll()
                 .antMatchers("/doc.html", "/webjars/**", "/v2/api-docs", "/v3/api-docs", "/swagger-resources/**", "/swagger-ui/**", "/favicon.ico").permitAll()
                 .antMatchers("/actuator/**").permitAll()
+                .antMatchers("/audit-log/**").hasAnyRole("admin", "supervisor")
                 .anyRequest().authenticated()
                 .and()
                 .exceptionHandling()

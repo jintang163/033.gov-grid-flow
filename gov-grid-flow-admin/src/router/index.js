@@ -127,6 +127,18 @@ const routes = [
         meta: { title: '区块链存证', icon: 'Lock', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
       }
     ]
+  },
+  {
+    path: '/audit',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'log',
+        name: 'AuditLog',
+        component: () => import('@/views/audit-log/index.vue'),
+        meta: { title: '审计日志', icon: 'Notebook', roles: ['admin', 'supervisor'] }
+      }
+    ]
   }
 ]
 
