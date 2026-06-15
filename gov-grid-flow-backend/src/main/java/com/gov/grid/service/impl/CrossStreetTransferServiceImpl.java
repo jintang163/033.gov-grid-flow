@@ -21,12 +21,17 @@ import com.gov.grid.enums.EventStatus;
 import com.gov.grid.enums.TransferTargetType;
 import com.gov.grid.mapper.EventCrossStreetTransferMapper;
 import com.gov.grid.mapper.EventInfoMapper;
+import com.gov.grid.mapper.EventProcessMapper;
 import com.gov.grid.mapper.GridInfoMapper;
 import com.gov.grid.mapper.SysDeptMapper;
 import com.gov.grid.mapper.SysUserMapper;
 import com.gov.grid.security.DataScopeUtils;
 import com.gov.grid.service.CrossStreetTransferService;
+import com.gov.grid.service.GridService;
 import com.gov.grid.service.NotificationService;
+import com.gov.grid.entity.EventProcess;
+import com.gov.grid.enums.ProcessAction;
+import com.gov.grid.enums.RoleEnum;
 import com.gov.grid.vo.CrossStreetTransferVO;
 import com.gov.grid.vo.DeptTreeVO;
 import com.gov.grid.vo.TransferTraceVO;
@@ -51,9 +56,11 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
 
     private final EventCrossStreetTransferMapper transferMapper;
     private final EventInfoMapper eventInfoMapper;
+    private final EventProcessMapper eventProcessMapper;
     private final SysDeptMapper sysDeptMapper;
     private final SysUserMapper sysUserMapper;
     private final GridInfoMapper gridInfoMapper;
+    private final GridService gridService;
     private final NotificationService notificationService;
 
     @Override
@@ -71,6 +78,18 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
 
         if (!DataScopeUtils.canAccessGrid(eventInfo.getGridId())) {
             throw new BusinessException("无权操作该事件");
+        }
+
+        validateTransferAuthority(eventInfo, user);
+
+        if (StrUtil.isBlank(dto.getTransferReason())) {
+            throw new BusinessException("请填写转派原因");
+        }
+        if (StrUtil.isBlank(dto.getCrossBoundaryDescription())) {
+            throw new BusinessException("请填写跨界描述");
+        }
+        if (StrUtil.isBlank(dto.getImpactRange())) {
+            throw new BusinessException("请填写影响范围");
         }
 
         LambdaQueryWrapper<EventCrossStreetTransfer> checkWrapper = new LambdaQueryWrapper<>();
@@ -130,6 +149,11 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
         eventInfo.setStatus("TRANSFERRING");
         eventInfoMapper.updateById(eventInfo);
 
+        addEventProcessRecord(eventInfo.getId(), ProcessAction.TRANSFER_APPLY.getCode(),
+                "跨街流转申请", userId, user.getRealName(),
+                "申请转至" + targetDept.getName() + "，原因：" + dto.getTransferReason(),
+                null);
+
         sendTransferNotification(transfer, "PENDING_APPROVAL", userId);
 
         log.info("跨街道流转申请提交成功，事件ID：{}，流转ID：{}，申请人：{}",
@@ -155,6 +179,10 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
             throw new BusinessException("用户不存在");
         }
 
+        if (!canApproveTransfer(transfer, user)) {
+            throw new BusinessException("您没有审批该流转申请的权限，请联系上级部门审批");
+        }
+
         transfer.setApproverId(userId);
         transfer.setApproverName(user.getRealName());
         transfer.setApproveTime(LocalDateTime.now());
@@ -173,6 +201,12 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
                 eventInfoMapper.updateById(eventInfo);
             }
 
+            addEventProcessRecord(transfer.getEventId(), ProcessAction.TRANSFER_APPROVE.getCode(),
+                    "跨街流转审批通过", userId, user.getRealName(),
+                    "审批通过，转至" + transfer.getTargetDeptName() + "。" +
+                            (dto.getApproveComment() != null ? "审批意见：" + dto.getApproveComment() : ""),
+                    null);
+
             sendTransferNotification(transfer, "TRANSFERRED", userId);
             log.info("跨街道流转审批通过，流转ID：{}，审批人：{}", dto.getTransferId(), userId);
         } else {
@@ -184,6 +218,11 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
                 eventInfo.setStatus(EventStatus.APPROVED.getCode());
                 eventInfoMapper.updateById(eventInfo);
             }
+
+            addEventProcessRecord(transfer.getEventId(), ProcessAction.TRANSFER_REJECT.getCode(),
+                    "跨街流转申请驳回", userId, user.getRealName(),
+                    "驳回原因：" + (dto.getApproveComment() != null ? dto.getApproveComment() : "暂无"),
+                    null);
 
             sendTransferNotification(transfer, "REJECTED", userId);
             log.info("跨街道流转申请被驳回，流转ID：{}，审批人：{}", dto.getTransferId(), userId);
@@ -232,6 +271,11 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
             eventInfoMapper.updateById(eventInfo);
         }
 
+        addEventProcessRecord(transfer.getEventId(), ProcessAction.TRANSFER_RECEIVE.getCode(),
+                "接收跨街流转", userId, user.getRealName(),
+                "已接收来自" + transfer.getSourceDeptName() + "的协作任务，开始处理",
+                null);
+
         sendTransferNotification(transfer, "ACCEPTED", userId);
 
         log.info("跨街道流转已接收并开始处理，流转ID：{}，接收人：{}", transferId, userId);
@@ -266,6 +310,13 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
         }
         transfer.setUpdateTime(LocalDateTime.now());
         transferMapper.updateById(transfer);
+
+        String attachments = CollUtil.isNotEmpty(dto.getAttachments())
+                ? String.join(",", dto.getAttachments()) : null;
+        addEventProcessRecord(transfer.getEventId(), ProcessAction.TRANSFER_PROCESS.getCode(),
+                "跨街协作处理", userId, user.getRealName(),
+                dto.getProcessDescription(),
+                attachments);
 
         sendTransferNotification(transfer, "PROCESSING", userId);
 
@@ -319,6 +370,17 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
             eventInfo.setStatus(EventStatus.HANDLED.getCode());
             eventInfoMapper.updateById(eventInfo);
         }
+
+        String comment = "处理结果：" + dto.getProcessResult();
+        if (StrUtil.isNotBlank(dto.getProcessDescription())) {
+            comment += "，处理详情：" + dto.getProcessDescription();
+        }
+        String attachments = CollUtil.isNotEmpty(dto.getAttachments())
+                ? String.join(",", dto.getAttachments()) : null;
+        addEventProcessRecord(transfer.getEventId(), ProcessAction.TRANSFER_COMPLETE.getCode(),
+                "跨街流转办结", userId, user.getRealName(),
+                comment,
+                attachments);
 
         sendTransferNotification(transfer, "COMPLETED", userId);
 
@@ -389,55 +451,153 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
         }
 
         List<TransferTraceVO> traceList = new ArrayList<>();
+
+        List<EventProcess> processRecords = getEventProcessRecords(transfer.getEventId());
         int sort = 0;
+        for (EventProcess process : processRecords) {
+            TransferTraceVO trace = buildTraceFromProcess(sort++, transferId, transfer, process);
+            if (trace != null) {
+                traceList.add(trace);
+            }
+        }
 
-        traceList.add(buildTrace(sort++, transferId, "APPLY", "流转申请",
-                transfer.getApplicantId(), transfer.getApplicantName(),
-                transfer.getSourceDeptName(), null,
-                transfer.getApplicantTime(),
-                "提交跨街道流转申请，原因为：" + transfer.getTransferReason(),
-                transfer.getStatus()));
-
-        if (transfer.getApproverId() != null) {
-            String actionName = CrossStreetTransferStatus.REJECTED.getCode().equals(transfer.getStatus())
-                    || (transfer.getApproveComment() != null && transfer.getStatus() == null)
-                    ? "驳回申请" : "审批通过";
-            traceList.add(buildTrace(sort++, transferId, "APPROVE", "上级审批",
-                    transfer.getApproverId(), transfer.getApproverName(),
-                    null, transfer.getTargetDeptName(),
-                    transfer.getApproveTime(),
-                    actionName + "：" + (transfer.getApproveComment() != null ? transfer.getApproveComment() : ""),
+        if (traceList.isEmpty()) {
+            traceList.add(buildTrace(sort++, transferId, "APPLY", "流转申请",
+                    transfer.getApplicantId(), transfer.getApplicantName(),
+                    transfer.getSourceDeptName(), null,
+                    transfer.getApplicantTime(),
+                    "提交跨街道流转申请，原因为：" + transfer.getTransferReason(),
                     transfer.getStatus()));
-        }
 
-        if (transfer.getReceiverId() != null) {
-            traceList.add(buildTrace(sort++, transferId, "RECEIVE", "接收流转",
-                    transfer.getReceiverId(), transfer.getReceiverName(),
-                    null, null,
-                    transfer.getReceiveTime(),
-                    "已接收流转，开始协作处理",
-                    CrossStreetTransferStatus.ACCEPTED.getCode()));
-        }
+            if (transfer.getApproverId() != null) {
+                String actionName = CrossStreetTransferStatus.REJECTED.getCode().equals(transfer.getStatus())
+                        ? "驳回申请" : "审批通过";
+                traceList.add(buildTrace(sort++, transferId, "APPROVE", "上级审批",
+                        transfer.getApproverId(), transfer.getApproverName(),
+                        null, transfer.getTargetDeptName(),
+                        transfer.getApproveTime(),
+                        actionName + "：" + (transfer.getApproveComment() != null ? transfer.getApproveComment() : ""),
+                        transfer.getStatus()));
+            }
 
-        if (transfer.getProcessStartTime() != null) {
-            traceList.add(buildTrace(sort++, transferId, "PROCESS_START", "开始处理",
-                    transfer.getHandlerId(), transfer.getHandlerName(),
-                    null, null,
-                    transfer.getProcessStartTime(),
-                    "协作处理中",
-                    CrossStreetTransferStatus.PROCESSING.getCode()));
-        }
+            if (transfer.getReceiverId() != null) {
+                traceList.add(buildTrace(sort++, transferId, "RECEIVE", "接收流转",
+                        transfer.getReceiverId(), transfer.getReceiverName(),
+                        null, null,
+                        transfer.getReceiveTime(),
+                        "已接收流转，开始协作处理",
+                        CrossStreetTransferStatus.ACCEPTED.getCode()));
+            }
 
-        if (transfer.getProcessEndTime() != null) {
-            traceList.add(buildTrace(sort++, transferId, "COMPLETE", "办结",
-                    transfer.getHandlerId(), transfer.getHandlerName(),
-                    null, null,
-                    transfer.getProcessEndTime(),
-                    "协作处理完成，结果：" + transfer.getProcessResult(),
-                    CrossStreetTransferStatus.COMPLETED.getCode()));
+            if (transfer.getProcessStartTime() != null) {
+                traceList.add(buildTrace(sort++, transferId, "PROCESS_START", "开始处理",
+                        transfer.getHandlerId(), transfer.getHandlerName(),
+                        null, null,
+                        transfer.getProcessStartTime(),
+                        "协作处理中",
+                        CrossStreetTransferStatus.PROCESSING.getCode()));
+            }
+
+            if (transfer.getProcessEndTime() != null) {
+                traceList.add(buildTrace(sort++, transferId, "COMPLETE", "办结",
+                        transfer.getHandlerId(), transfer.getHandlerName(),
+                        null, null,
+                        transfer.getProcessEndTime(),
+                        "协作处理完成，结果：" + transfer.getProcessResult(),
+                        CrossStreetTransferStatus.COMPLETED.getCode()));
+            }
         }
 
         return traceList;
+    }
+
+    private List<EventProcess> getEventProcessRecords(Long eventId) {
+        if (eventId == null) {
+            return new ArrayList<>();
+        }
+        LambdaQueryWrapper<EventProcess> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EventProcess::getEventId, eventId);
+        wrapper.orderByAsc(EventProcess::getHandleTime);
+        return eventProcessMapper.selectList(wrapper);
+    }
+
+    private TransferTraceVO buildTraceFromProcess(int sort, Long transferId,
+                                                  EventCrossStreetTransfer transfer, EventProcess process) {
+        if (process == null || process.getAction() == null) {
+            return null;
+        }
+
+        String action = process.getAction();
+        String traceType = "PROCESS";
+        String nodeName = ProcessAction.getNameByCode(action);
+        if (nodeName == null || nodeName.equals(action)) {
+            nodeName = process.getNodeName() != null ? process.getNodeName() : action;
+        }
+
+        String fromDeptName = null;
+        String toDeptName = null;
+        String status = null;
+
+        boolean isTransferAction = action.startsWith("TRANSFER_");
+        if (isTransferAction) {
+            traceType = "TRANSFER";
+        }
+
+        if (ProcessAction.TRANSFER_APPLY.getCode().equals(action)) {
+            fromDeptName = transfer.getSourceDeptName();
+            status = CrossStreetTransferStatus.PENDING_APPROVAL.getCode();
+        } else if (ProcessAction.TRANSFER_APPROVE.getCode().equals(action)) {
+            toDeptName = transfer.getTargetDeptName();
+            status = CrossStreetTransferStatus.TRANSFERRED.getCode();
+        } else if (ProcessAction.TRANSFER_REJECT.getCode().equals(action)) {
+            status = CrossStreetTransferStatus.REJECTED.getCode();
+        } else if (ProcessAction.TRANSFER_RECEIVE.getCode().equals(action)) {
+            fromDeptName = transfer.getSourceDeptName();
+            toDeptName = transfer.getTargetDeptName();
+            status = CrossStreetTransferStatus.ACCEPTED.getCode();
+        } else if (ProcessAction.TRANSFER_PROCESS.getCode().equals(action)) {
+            status = CrossStreetTransferStatus.PROCESSING.getCode();
+        } else if (ProcessAction.TRANSFER_COMPLETE.getCode().equals(action)) {
+            status = CrossStreetTransferStatus.COMPLETED.getCode();
+        }
+
+        TransferTraceVO trace = buildTrace(sort, transferId, traceType, nodeName,
+                process.getHandlerId(), process.getHandlerName(),
+                fromDeptName, toDeptName,
+                process.getHandleTime(),
+                process.getComment(),
+                status);
+
+        if (process.getAttachments() != null && !process.getAttachments().isEmpty()) {
+            trace.setAttachments(process.getAttachments());
+        }
+        trace.setAction(action);
+        trace.setActionName(nodeName);
+        if (process.getDurationSeconds() != null) {
+            trace.setTraceDetail("耗时：" + formatDuration(process.getDurationSeconds()));
+        }
+
+        return trace;
+    }
+
+    private String formatDuration(Long seconds) {
+        if (seconds == null || seconds <= 0) {
+            return "0分钟";
+        }
+        if (seconds < 60) {
+            return seconds + "秒";
+        }
+        if (seconds < 3600) {
+            return (seconds / 60) + "分钟";
+        }
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        if (hours < 24) {
+            return hours + "小时" + (minutes > 0 ? minutes + "分钟" : "");
+        }
+        long days = hours / 24;
+        long remainHours = hours % 24;
+        return days + "天" + (remainHours > 0 ? remainHours + "小时" : "");
     }
 
     @Override
@@ -690,7 +850,7 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
             SysUser currentUser = sysUserMapper.selectById(currentUserId);
             if (currentUser != null) {
                 vo.setCanApprove(CrossStreetTransferStatus.PENDING_APPROVAL.getCode().equals(entity.getStatus())
-                        && isApprover(currentUser));
+                        && canApproveTransfer(entity, currentUser));
                 vo.setCanReceive(CrossStreetTransferStatus.TRANSFERRED.getCode().equals(entity.getStatus())
                         && currentUser.getDeptId() != null
                         && currentUser.getDeptId().equals(entity.getTargetDeptId()));
@@ -755,6 +915,133 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
                 || user.getRole().contains("supervisor");
     }
 
+    private boolean canApproveTransfer(EventCrossStreetTransfer transfer, SysUser user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+
+        RoleEnum roleEnum = RoleEnum.getByCode(user.getRole());
+        if (roleEnum == null) {
+            return false;
+        }
+
+        if (RoleEnum.ADMIN.equals(roleEnum)) {
+            return true;
+        }
+
+        if (RoleEnum.SUPERVISOR.equals(roleEnum)) {
+            return true;
+        }
+
+        if (RoleEnum.STREET_MANAGER.equals(roleEnum)) {
+            Long sourceDeptId = transfer.getSourceDeptId();
+            Long userDeptId = user.getDeptId();
+
+            if (sourceDeptId == null || userDeptId == null) {
+                return false;
+            }
+
+            if (sourceDeptId.equals(userDeptId)) {
+                return false;
+            }
+
+            return isParentDept(userDeptId, sourceDeptId);
+        }
+
+        return false;
+    }
+
+    private boolean isParentDept(Long parentDeptId, Long childDeptId) {
+        if (parentDeptId == null || childDeptId == null) {
+            return false;
+        }
+
+        SysDept childDept = sysDeptMapper.selectById(childDeptId);
+        if (childDept == null) {
+            return false;
+        }
+
+        if (parentDeptId.equals(childDept.getParentId())) {
+            return true;
+        }
+
+        if (childDept.getParentId() != null && childDept.getParentId() != 0) {
+            return isParentDept(parentDeptId, childDept.getParentId());
+        }
+
+        return false;
+    }
+
+    private Long getTopParentDeptId(Long deptId) {
+        if (deptId == null) {
+            return null;
+        }
+
+        SysDept dept = sysDeptMapper.selectById(deptId);
+        if (dept == null) {
+            return deptId;
+        }
+
+        if (dept.getParentId() == null || dept.getParentId() == 0) {
+            return deptId;
+        }
+
+        return getTopParentDeptId(dept.getParentId());
+    }
+
+    private List<SysUser> findTransferApprovers(Long sourceDeptId) {
+        List<SysUser> allApprovers = new ArrayList<>();
+
+        LambdaQueryWrapper<SysUser> adminWrapper = new LambdaQueryWrapper<>();
+        adminWrapper.eq(SysUser::getRole, "admin");
+        adminWrapper.eq(SysUser::getStatus, 1);
+        allApprovers.addAll(sysUserMapper.selectList(adminWrapper));
+
+        LambdaQueryWrapper<SysUser> supervisorWrapper = new LambdaQueryWrapper<>();
+        supervisorWrapper.eq(SysUser::getRole, "supervisor");
+        supervisorWrapper.eq(SysUser::getStatus, 1);
+        allApprovers.addAll(sysUserMapper.selectList(supervisorWrapper));
+
+        if (sourceDeptId != null) {
+            SysDept sourceDept = sysDeptMapper.selectById(sourceDeptId);
+            if (sourceDept != null && sourceDept.getParentId() != null && sourceDept.getParentId() != 0) {
+                LambdaQueryWrapper<SysDept> parentWrapper = new LambdaQueryWrapper<>();
+                parentWrapper.eq(SysDept::getStatus, 1);
+                List<SysDept> allDepts = sysDeptMapper.selectList(parentWrapper);
+
+                List<Long> parentDeptIds = new ArrayList<>();
+                collectParentDeptIds(sourceDeptId, allDepts, parentDeptIds);
+
+                if (!parentDeptIds.isEmpty()) {
+                    LambdaQueryWrapper<SysUser> streetMgrWrapper = new LambdaQueryWrapper<>();
+                    streetMgrWrapper.eq(SysUser::getRole, "street_manager");
+                    streetMgrWrapper.in(SysUser::getDeptId, parentDeptIds);
+                    streetMgrWrapper.eq(SysUser::getStatus, 1);
+                    allApprovers.addAll(sysUserMapper.selectList(streetMgrWrapper));
+                }
+            }
+        }
+
+        return allApprovers.stream()
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private void collectParentDeptIds(Long deptId, List<SysDept> allDepts, List<Long> parentIds) {
+        Map<Long, SysDept> deptMap = allDepts.stream()
+                .collect(Collectors.toMap(SysDept::getId, d -> d));
+
+        Long currentId = deptId;
+        while (currentId != null) {
+            SysDept dept = deptMap.get(currentId);
+            if (dept == null || dept.getParentId() == null || dept.getParentId() == 0) {
+                break;
+            }
+            parentIds.add(dept.getParentId());
+            currentId = dept.getParentId();
+        }
+    }
+
     private void sendTransferNotification(EventCrossStreetTransfer transfer, String action, Long operatorId) {
         try {
             String title = "";
@@ -766,7 +1053,7 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
                     title = "【跨街道流转审批提醒】";
                     content = String.format("事件【%s】已提交跨街道流转申请，请及时审批。\n申请人：%s\n申请转至：%s",
                             transfer.getEventTitle(), transfer.getApplicantName(), transfer.getTargetDeptName());
-                    List<SysUser> approvers = findApprovers();
+                    List<SysUser> approvers = findTransferApprovers(transfer.getSourceDeptId());
                     for (SysUser approver : approvers) {
                         notificationService.sendAppPush(approver.getId(), title, content, "TRANSFER_APPROVAL", transfer.getId());
                     }
@@ -826,6 +1113,98 @@ public class CrossStreetTransferServiceImpl implements CrossStreetTransferServic
             log.info("跨街道流转通知发送成功，流转ID：{}，动作：{}", transfer.getId(), action);
         } catch (Exception e) {
             log.error("跨街道流转通知发送失败，流转ID：{}，错误：{}", transfer.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void validateTransferAuthority(EventInfo eventInfo, SysUser user) {
+        if (eventInfo.getGridId() == null) {
+            return;
+        }
+
+        RoleEnum roleEnum = RoleEnum.getByCode(user.getRole());
+        if (roleEnum == null) {
+            return;
+        }
+
+        if (RoleEnum.ADMIN.equals(roleEnum) || RoleEnum.HANDLER.equals(roleEnum)) {
+            return;
+        }
+
+        boolean isEventInOwnScope = isGridInUserScope(eventInfo.getGridId(), user);
+
+        if (isEventInOwnScope) {
+            boolean hasCrossBoundaryFeature = checkCrossBoundaryFeature(eventInfo);
+            if (!hasCrossBoundaryFeature) {
+                throw new BusinessException(
+                        "该事件属于本街道管辖范围，且未发现跨界特征。如确需跨街道协作，请在事件描述中注明跨界情况，或联系管理员确认。");
+            }
+        }
+    }
+
+    private boolean isGridInUserScope(Long gridId, SysUser user) {
+        if (gridId == null || user.getGridId() == null) {
+            return false;
+        }
+
+        if (gridId.equals(user.getGridId())) {
+            return true;
+        }
+
+        List<Long> subGridIds = DataScopeUtils.getSubGridIds(user.getGridId());
+        return subGridIds != null && subGridIds.contains(gridId);
+    }
+
+    private boolean checkCrossBoundaryFeature(EventInfo eventInfo) {
+        String title = eventInfo.getTitle() != null ? eventInfo.getTitle() : "";
+        String description = eventInfo.getDescription() != null ? eventInfo.getDescription() : "";
+        String content = title + description;
+
+        String[] crossBoundaryKeywords = {
+                "跨街道", "跨界", "跨区", "相邻街道", "隔壁街道", "邻街",
+                "上游", "下游", "过境", "交界", "边界", "接壤",
+                "河道", "河流", "沟渠", "主干道", "快速路", "高速"
+        };
+
+        for (String keyword : crossBoundaryKeywords) {
+            if (content.contains(keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void addEventProcessRecord(Long eventId, String action, String nodeName,
+                                       Long handlerId, String handlerName,
+                                       String comment, String attachments) {
+        try {
+            EventProcess process = new EventProcess();
+            process.setEventId(eventId);
+            process.setNodeName(nodeName);
+            process.setHandlerId(handlerId);
+            process.setHandlerName(handlerName);
+            process.setAction(action);
+            process.setComment(comment);
+            if (StrUtil.isNotBlank(attachments)) {
+                process.setAttachments(attachments);
+            }
+            process.setHandleTime(LocalDateTime.now());
+
+            LambdaQueryWrapper<EventProcess> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(EventProcess::getEventId, eventId)
+                    .orderByDesc(EventProcess::getHandleTime)
+                    .last("LIMIT 1");
+            EventProcess lastProcess = eventProcessMapper.selectOne(wrapper);
+            if (lastProcess != null && lastProcess.getHandleTime() != null) {
+                long seconds = java.time.temporal.ChronoUnit.SECONDS.between(
+                        lastProcess.getHandleTime(), process.getHandleTime());
+                process.setDurationSeconds(seconds);
+            }
+
+            eventProcessMapper.insert(process);
+            log.debug("事件处置流水已记录，事件ID：{}，动作：{}，处理人：{}", eventId, action, handlerName);
+        } catch (Exception e) {
+            log.error("记录事件处置流水失败，事件ID：{}，动作：{}", eventId, action, e);
         }
     }
 

@@ -11,7 +11,13 @@ public enum ProcessAction {
     ASSIGN("ASSIGN", "指派处置"),
     HANDLE("HANDLE", "事件处置"),
     VERIFY("VERIFY", "核查结案"),
-    REJECT("REJECT", "退回");
+    REJECT("REJECT", "退回"),
+    TRANSFER_APPLY("TRANSFER_APPLY", "申请跨街流转"),
+    TRANSFER_APPROVE("TRANSFER_APPROVE", "跨街流转审批通过"),
+    TRANSFER_REJECT("TRANSFER_REJECT", "跨街流转申请驳回"),
+    TRANSFER_RECEIVE("TRANSFER_RECEIVE", "接收跨街流转"),
+    TRANSFER_PROCESS("TRANSFER_PROCESS", "跨街协作处理"),
+    TRANSFER_COMPLETE("TRANSFER_COMPLETE", "跨街流转办结");
 
     private final String code;
     private final String name;
