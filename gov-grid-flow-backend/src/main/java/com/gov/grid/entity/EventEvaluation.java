@@ -27,4 +27,16 @@ public class EventEvaluation extends BaseEntity {
 
     @TableField("content")
     private String content;
+
+    @TableField("sentiment_label")
+    private String sentimentLabel;
+
+    @TableField("sentiment_score")
+    private Double sentimentScore;
+
+    @TableField("keywords")
+    private String keywords;
+
+    @TableField("warning_level")
+    private String warningLevel;
 }

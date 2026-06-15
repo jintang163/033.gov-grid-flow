@@ -248,16 +248,24 @@ CREATE TABLE `event_process` (
 -- ---------------------------------------------
 DROP TABLE IF EXISTS `event_evaluation`;
 CREATE TABLE `event_evaluation` (
-  `id`            bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `event_id`      bigint(20)   NOT NULL COMMENT '事件ID',
-  `reporter_id`   bigint(20)   NOT NULL COMMENT '评价人ID',
-  `speed_score`   tinyint(4)   NOT NULL DEFAULT 5 COMMENT '速度评分：1-5',
-  `effect_score`  tinyint(4)   NOT NULL DEFAULT 5 COMMENT '效果评分：1-5',
-  `content`       text         DEFAULT NULL COMMENT '评价内容',
-  `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `id`               bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_id`         bigint(20)   NOT NULL COMMENT '事件ID',
+  `reporter_id`      bigint(20)   NOT NULL COMMENT '评价人ID',
+  `speed_score`      tinyint(4)   NOT NULL DEFAULT 5 COMMENT '速度评分：1-5',
+  `effect_score`     tinyint(4)   NOT NULL DEFAULT 5 COMMENT '效果评分：1-5',
+  `content`          text         DEFAULT NULL COMMENT '评价内容',
+  `sentiment_label`  varchar(20)  DEFAULT NULL COMMENT '情感标签：positive-正向 negative-负向 neutral-中性',
+  `sentiment_score`  decimal(5,4) DEFAULT NULL COMMENT '情感得分：0-1，越接近1越正向',
+  `keywords`         text         DEFAULT NULL COMMENT '关键词，JSON数组格式',
+  `warning_level`    varchar(20)  DEFAULT NULL COMMENT '预警等级：excellent good normal attention warning critical',
+  `created_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_event_reporter` (`event_id`, `reporter_id`),
-  KEY `idx_reporter_id` (`reporter_id`)
+  KEY `idx_reporter_id` (`reporter_id`),
+  KEY `idx_sentiment_label` (`sentiment_label`),
+  KEY `idx_warning_level` (`warning_level`),
+  KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件评价表';
 
 -- ---------------------------------------------
@@ -791,5 +799,33 @@ INSERT INTO `event_info` (`id`, `event_no`, `title`, `event_type`, `description`
 (58, 'EV202401150012', '不明事项咨询', 'service', '政策不明确，需要多部门协调。', 116.403800, 39.904800, '服务中心', 0, 6, 10, 'COMPLETED', 'LOW'),
 (59, 'EV202401160012', '跨部门事项', 'service', '涉及多个部门的复杂事项。', 116.410800, 39.906800, '政务大厅', 0, 7, 12, 'COMPLETED', 'NORMAL'),
 (60, 'EV202401170012', '历史遗留问题', 'service', '历史遗留问题，需要协调处理。', 116.406400, 39.907200, '相关部门', 0, 8, 11, 'COMPLETED', 'NORMAL');
+
+-- ---------------------------------------------
+-- 16. 舆情日统计表 public_opinion_daily
+-- ---------------------------------------------
+DROP TABLE IF EXISTS `public_opinion_daily`;
+CREATE TABLE `public_opinion_daily` (
+  `id`                  bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `stat_date`           date         NOT NULL COMMENT '统计日期',
+  `grid_id`             bigint(20)   DEFAULT NULL COMMENT '网格ID，NULL表示全区域',
+  `grid_name`           varchar(100) DEFAULT NULL COMMENT '网格名称（冗余）',
+  `total_evaluations`   int(11)      NOT NULL DEFAULT 0 COMMENT '评价总数',
+  `positive_count`      int(11)      NOT NULL DEFAULT 0 COMMENT '正向评价数',
+  `negative_count`      int(11)      NOT NULL DEFAULT 0 COMMENT '负向评价数',
+  `neutral_count`       int(11)      NOT NULL DEFAULT 0 COMMENT '中性评价数',
+  `avg_sentiment_score` decimal(5,4) DEFAULT NULL COMMENT '平均情感得分',
+  `opinion_index`       decimal(5,4) DEFAULT NULL COMMENT '舆情指数 0-1',
+  `avg_speed_score`     decimal(3,2) DEFAULT NULL COMMENT '平均速度评分',
+  `avg_effect_score`    decimal(3,2) DEFAULT NULL COMMENT '平均效果评分',
+  `warning_count`       int(11)      NOT NULL DEFAULT 0 COMMENT '预警事件数',
+  `top_keywords`        text         DEFAULT NULL COMMENT 'TOP关键词JSON',
+  `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_date_grid` (`stat_date`, `grid_id`),
+  KEY `idx_stat_date` (`stat_date`),
+  KEY `idx_grid_id` (`grid_id`),
+  KEY `idx_opinion_index` (`opinion_index`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='舆情日统计表';
 
 SET FOREIGN_KEY_CHECKS = 1;

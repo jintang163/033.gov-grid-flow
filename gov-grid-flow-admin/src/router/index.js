@@ -139,6 +139,18 @@ const routes = [
         meta: { title: '审计日志', icon: 'Notebook', roles: ['admin', 'supervisor'] }
       }
     ]
+  },
+  {
+    path: '/public-opinion',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'dashboard',
+        name: 'PublicOpinion',
+        component: () => import('@/views/public-opinion/index.vue'),
+        meta: { title: '舆情分析', icon: 'DataAnalysis', roles: ['admin', 'supervisor', 'street_manager'] }
+      }
+    ]
   }
 ]
 
