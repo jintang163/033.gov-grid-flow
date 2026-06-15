@@ -63,6 +63,7 @@
           <van-grid-item icon="scan" text="扫码上报" @click="goScan" />
           <van-grid-item icon="location-o" text="地图浏览" @click="goMap" />
           <van-grid-item icon="log" text="事件记录" @click="goEventList" />
+          <van-grid-item icon="exchange" text="跨街流转" @click="goCrossStreetTransfer" />
           <van-grid-item icon="chart-trending-o" text="统计分析" @click="goStatistics" />
         </van-grid>
       </div>
@@ -302,6 +303,7 @@ const goEventList = () => router.push('/todo')
 const goStatistics = () => showToast('统计分析功能')
 const goNotifications = () => router.push('/warning')
 const goWarning = () => router.push('/warning')
+const goCrossStreetTransfer = () => router.push('/cross-street-transfer')
 const goMyReport = () => router.push('/todo')
 const goMyDone = () => router.push('/todo')
 

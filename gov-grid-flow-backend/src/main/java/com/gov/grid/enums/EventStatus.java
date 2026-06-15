@@ -10,7 +10,9 @@ public enum EventStatus {
     DISPATCHED("DISPATCHED", "已分派"),
     HANDLED("HANDLED", "已处置"),
     COMPLETED("COMPLETED", "已办结"),
-    REJECTED("REJECTED", "已驳回");
+    REJECTED("REJECTED", "已驳回"),
+    TRANSFERRING("TRANSFERRING", "流转审批中"),
+    TRANSFERRED("TRANSFERRED", "已跨街道转派");
 
     private final String code;
     private final String name;

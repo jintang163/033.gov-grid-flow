@@ -64,6 +64,24 @@ const routes = [
     name: 'WarningGrid',
     component: () => import('@/views/warning/grid.vue'),
     meta: { title: '网格预警', requiresAuth: true }
+  },
+  {
+    path: '/cross-street-transfer',
+    name: 'CrossStreetTransfer',
+    component: () => import('@/views/cross-street-transfer/index.vue'),
+    meta: { title: '跨街道协同流转', requiresAuth: true }
+  },
+  {
+    path: '/transfer-apply',
+    name: 'TransferApply',
+    component: () => import('@/views/cross-street-transfer/apply.vue'),
+    meta: { title: '申请流转', requiresAuth: true }
+  },
+  {
+    path: '/transfer-detail',
+    name: 'TransferDetail',
+    component: () => import('@/views/cross-street-transfer/detail.vue'),
+    meta: { title: '流转详情', requiresAuth: true }
   }
 ]
 

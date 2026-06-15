@@ -40,6 +40,28 @@
           <span class="footer-text">{{ urgeFooterText }}</span>
         </span>
       </div>
+      <div class="card-actions">
+        <van-button
+          v-if="canApplyTransfer"
+          size="small"
+          type="danger"
+          plain
+          icon="exchange"
+          @click.stop="handleCrossStreetTransfer"
+        >
+          跨街流转
+        </van-button>
+        <van-button
+          v-if="hasTransferHistory"
+          size="small"
+          type="primary"
+          plain
+          icon="cluster-o"
+          @click.stop="handleViewTransferHistory"
+        >
+          流转历史
+        </van-button>
+      </div>
     </template>
   </van-card>
 </template>
@@ -63,7 +85,9 @@ const statusMap = {
   DISPATCHED: { text: '已分派', type: 'primary' },
   HANDLED: { text: '已处置', type: 'success' },
   COMPLETED: { text: '已办结', type: 'success' },
-  REJECTED: { text: '已驳回', type: 'danger' }
+  REJECTED: { text: '已驳回', type: 'danger' },
+  TRANSFERRING: { text: '流转审批中', type: 'warning' },
+  TRANSFERRED: { text: '已跨街道转派', type: 'danger' }
 }
 
 const eventTypeMap = {
@@ -165,6 +189,29 @@ const urgeFooterClass = computed(() => {
   return 'urge-footer-normal'
 })
 
+const canApplyTransfer = computed(() => {
+  const status = props.event.status
+  return status === 'APPROVED' || status === 'DISPATCHED' || status === 'PENDING'
+})
+
+const hasTransferHistory = computed(() => {
+  const status = props.event.status
+  return status === 'TRANSFERRING' || status === 'TRANSFERRED' ||
+         status === 'COMPLETED' || status === 'HANDLED'
+})
+
+const handleCrossStreetTransfer = () => {
+  if (props.event.id) {
+    router.push(`/transfer-apply?eventId=${props.event.id}`)
+  }
+}
+
+const handleViewTransferHistory = () => {
+  if (props.event.id) {
+    router.push(`/transfer-detail?eventId=${props.event.id}`)
+  }
+}
+
 const formatTime = (time) => {
   if (!time) return ''
   const date = new Date(time)
@@ -251,5 +298,19 @@ const handleClick = () => {
 
 .urge-footer-normal {
   color: #07c160;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f2f3f5;
+
+  :deep(.van-button) {
+    flex: 1;
+    font-size: 12px;
+    height: 32px;
+  }
 }
 </style>

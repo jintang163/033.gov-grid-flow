@@ -173,6 +173,22 @@
               <el-button link type="success" size="small" @click="handleVerify(row)">核查</el-button>
             </template>
             <el-button link type="warning" size="small" @click="handleEscalate(row)">督办</el-button>
+            <el-button
+              link
+              type="danger"
+              size="small"
+              @click="handleCrossStreetTransfer(row)"
+            >
+              <el-icon><Switch /></el-icon>跨街流转
+            </el-button>
+            <el-button
+              link
+              type="info"
+              size="small"
+              @click="handleViewTransferHistory(row)"
+            >
+              <el-icon><Guide /></el-icon>流转历史
+            </el-button>
             <el-button link type="primary" size="small" @click="handleViewGraph(row)">关联</el-button>
             <el-button link type="info" size="small" @click="handleViewDiagram(row)">流程图</el-button>
             <el-button link type="primary" size="small" @click="handleViewHistory(row)">历史</el-button>
@@ -761,6 +777,243 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="crossStreetTransferDialogVisible"
+      title="跨街道协同流转申请"
+      width="1000px"
+      destroy-on-close
+      class="transfer-dialog"
+    >
+      <el-alert
+        v-if="currentTransferEvent"
+        :title="`事件：${currentTransferEvent.title} (${currentTransferEvent.eventNo})`"
+        type="warning"
+        show-icon
+        :closable="false"
+        style="margin-bottom: 16px"
+      >
+        <template #default>
+          <span style="color: #909399; font-size: 13px">
+            当前所属网格：{{ currentTransferEvent.gridName || '-' }}
+          </span>
+        </template>
+      </el-alert>
+
+      <el-form :model="crossStreetTransferForm" label-width="120px">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="转派类型">
+              <el-radio-group v-model="crossStreetTransferForm.targetType" @change="onTargetTypeChange">
+                <el-radio-button value="STREET">相邻街道</el-radio-button>
+                <el-radio-button value="BUREAU">委办局</el-radio-button>
+                <el-radio-button value="COUNTY">区级部门</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="紧急程度">
+              <el-select v-model="crossStreetTransferForm.urgencyLevel" style="width: 100%">
+                <el-option label="低" value="LOW" />
+                <el-option label="普通" value="MEDIUM" />
+                <el-option label="重要" value="HIGH" />
+                <el-option label="紧急" value="URGENT" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="转派原因" required>
+          <el-input
+            v-model="crossStreetTransferForm.transferReason"
+            type="textarea"
+            :rows="3"
+            placeholder="请详细说明需要跨街道处理的原因（如：事件超出本街道管辖范围、涉及多部门协作等）"
+          />
+        </el-form-item>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="跨界描述">
+              <el-input
+                v-model="crossStreetTransferForm.crossBoundaryDescription"
+                type="textarea"
+                :rows="2"
+                placeholder="描述事件跨界的具体情况"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="影响范围">
+              <el-input
+                v-model="crossStreetTransferForm.impactRange"
+                type="textarea"
+                :rows="2"
+                placeholder="描述事件影响的区域范围"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="协作说明">
+          <el-input
+            v-model="crossStreetTransferForm.coordinationNote"
+            type="textarea"
+            :rows="2"
+            placeholder="需要协作方特别注意的事项"
+          />
+        </el-form-item>
+
+        <el-divider content-position="left">
+          <el-icon><Guide /></el-icon>
+          推荐协作机构
+        </el-divider>
+
+        <div v-loading="recommendedTargetsLoading" class="recommend-section">
+          <el-empty v-if="!recommendedTargets.length" description="暂无推荐机构" :image-size="50" />
+          <div v-else class="recommend-list">
+            <div
+              v-for="target in recommendedTargets.slice(0, 6)"
+              :key="target.id"
+              class="recommend-item"
+              :class="{ active: crossStreetTransferForm.targetDeptId === target.id }"
+              @click="selectRecommendedTarget(target)"
+            >
+              <div class="recommend-header">
+                <span class="dept-name">{{ target.name }}</span>
+                <el-tag size="small" :type="target.matchScore >= 80 ? 'success' : target.matchScore >= 60 ? 'warning' : 'info'">
+                  匹配度 {{ target.matchScore }}%
+                </el-tag>
+              </div>
+              <div class="recommend-body">
+                <span class="match-reason">{{ target.matchReason }}</span>
+                <span v-if="target.phone" class="dept-phone">
+                  <el-icon><Phone /></el-icon> {{ target.phone }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-divider content-position="left">
+          <el-icon><Location /></el-icon>
+          选择协作机构
+        </el-divider>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <div class="dept-tree-wrapper" v-loading="cooperationDeptTreeLoading">
+              <el-input
+                placeholder="搜索部门名称"
+                clearable
+                style="margin-bottom: 10px"
+                v-model="deptSearchKeyword"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
+              <el-tree
+                :data="cooperationDeptTree"
+                :props="{ label: 'name', children: 'children' }"
+                node-key="id"
+                highlight-current
+                @node-click="onDeptNodeClick"
+                class="dept-tree"
+              >
+                <template #default="{ node, data }">
+                  <div class="tree-node">
+                    <span>{{ data.name }}</span>
+                    <el-tag v-if="data.deptTypeName" size="small" type="info" effect="plain" style="margin-left: 8px">
+                      {{ data.deptTypeName }}
+                    </el-tag>
+                  </div>
+                </template>
+              </el-tree>
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="selected-dept-info">
+              <h4 style="margin: 0 0 12px 0; color: #303133">
+                <el-icon><UserFilled /></el-icon>
+                已选择
+              </h4>
+              <div v-if="crossStreetTransferForm.targetDeptId" class="selected-card">
+                <div class="selected-name">{{ crossStreetTransferForm.targetDeptName }}</div>
+                <el-tag size="small" type="success">
+                  {{ getTargetTypeLabel(crossStreetTransferForm.targetType) }}
+                </el-tag>
+              </div>
+              <el-empty v-else description="请从左侧或推荐列表中选择协作机构" :image-size="50" />
+            </div>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="crossStreetTransferDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="transferSubmitting" @click="submitTransfer">
+          提交流转申请
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="transferHistoryDialogVisible" title="跨街道流转历史" width="900px" destroy-on-close>
+      <el-table v-if="transferHistoryList.length" :data="transferHistoryList" border stripe>
+        <el-table-column prop="targetDeptName" label="转至机构" width="180" show-overflow-tooltip />
+        <el-table-column prop="targetTypeName" label="类型" width="100" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getTransferStatusTagType(row.status)">
+              {{ getTransferStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="applicantName" label="申请人" width="100" />
+        <el-table-column prop="applicantTime" label="申请时间" width="170" />
+        <el-table-column prop="transferReason" label="转派原因" min-width="200" show-overflow-tooltip />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="viewTransferTrace(row)">
+              流转追溯
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else description="暂无跨街道流转记录" :image-size="60" />
+    </el-dialog>
+
+    <el-dialog v-model="transferTraceDialogVisible" title="流转追溯链" width="700px" destroy-on-close>
+      <el-timeline v-if="transferTraceList.length">
+        <el-timeline-item
+          v-for="(trace, index) in transferTraceList"
+          :key="trace.id || index"
+          :timestamp="trace.operateTime"
+          placement="top"
+          :type="getHistoryTimelineType(trace.nodeName)"
+          :icon="getHistoryTimelineIcon(trace.nodeName)"
+        >
+          <el-card shadow="never" class="history-card">
+            <div class="history-header">
+              <span class="node-name">{{ trace.nodeName }}</span>
+              <span class="handler">操作人：{{ trace.operatorName || '-' }}</span>
+              <span v-if="trace.operatorDeptName" class="dept">
+                ({{ trace.operatorDeptName }})
+              </span>
+            </div>
+            <div class="history-body">
+              <p v-if="trace.fromDeptName" style="margin: 4px 0; color: #606266">
+                <el-icon><ArrowRight /></el-icon>
+                从【{{ trace.fromDeptName }}】
+                <span v-if="trace.toDeptName">转至【{{ trace.toDeptName }}】</span>
+              </p>
+              <p v-if="trace.comment" style="margin: 4px 0"><strong>意见：</strong>{{ trace.comment }}</p>
+            </div>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+      <el-empty v-else description="暂无追溯信息" />
+    </el-dialog>
   </div>
 </template>
 
@@ -791,7 +1044,11 @@ import {
   WarningFilled,
   Lock,
   Unlock,
-  Check
+  Check,
+  Switch,
+  Guide,
+  UserFilled,
+  Location
 } from '@element-plus/icons-vue'
 import {
   getEventList,
@@ -815,6 +1072,13 @@ import { escalateEvent } from '@/api/urge'
 import { getGridList, getGridMembers } from '@/api/grid'
 import { getEventRelationGraph } from '@/api/analysis'
 import { checkEventFilesTamper, checkTamper, decryptAndDownload } from '@/api/watermark'
+import {
+  applyTransfer,
+  getRecommendedTargets,
+  getCooperationDeptTree,
+  getEventTransferHistory,
+  getTransferTrace
+} from '@/api/crossStreetTransfer'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
@@ -904,6 +1168,37 @@ const nlpDispatchResult = ref(null)
 const nlpAdopting = ref(false)
 const nlpTraining = ref(false)
 
+const crossStreetTransferDialogVisible = ref(false)
+const crossStreetTransferForm = reactive({
+  eventId: null,
+  eventTitle: '',
+  eventNo: '',
+  eventType: '',
+  targetType: 'STREET',
+  targetDeptId: null,
+  targetDeptName: '',
+  transferReason: '',
+  crossBoundaryDescription: '',
+  impactRange: '',
+  urgencyLevel: 'MEDIUM',
+  coordinationNote: '',
+  attachments: []
+})
+const recommendedTargets = ref([])
+const cooperationDeptTree = ref([])
+const cooperationDeptTreeLoading = ref(false)
+const recommendedTargetsLoading = ref(false)
+const transferSubmitting = ref(false)
+
+const transferTraceDialogVisible = ref(false)
+const transferTraceList = ref([])
+const currentTransferEvent = ref(null)
+
+const transferHistoryDialogVisible = ref(false)
+const transferHistoryList = ref([])
+
+const deptSearchKeyword = ref('')
+
 function getStatusLabel(status) {
   const map = {
     PENDING: '待受理',
@@ -911,7 +1206,9 @@ function getStatusLabel(status) {
     DISPATCHED: '已分派',
     HANDLED: '已处置',
     COMPLETED: '已办结',
-    REJECTED: '已驳回'
+    REJECTED: '已驳回',
+    TRANSFERRING: '流转审批中',
+    TRANSFERRED: '已跨街道转派'
   }
   return map[status] || status || '-'
 }
@@ -923,7 +1220,9 @@ function getStatusTagType(status) {
     DISPATCHED: 'info',
     HANDLED: '',
     COMPLETED: 'success',
-    REJECTED: 'danger'
+    REJECTED: 'danger',
+    TRANSFERRING: 'warning',
+    TRANSFERRED: 'danger'
   }
   return map[status] || 'info'
 }
@@ -1127,6 +1426,158 @@ async function handleEscalate(row) {
       ElMessage.error(e.message || '升级失败')
     }
   }
+}
+
+async function handleCrossStreetTransfer(row) {
+  const eventId = row.id || row.eventId
+  crossStreetTransferForm.eventId = eventId
+  crossStreetTransferForm.eventTitle = row.title
+  crossStreetTransferForm.eventNo = row.eventNo
+  crossStreetTransferForm.eventType = row.eventType
+  crossStreetTransferForm.targetType = 'STREET'
+  crossStreetTransferForm.targetDeptId = null
+  crossStreetTransferForm.targetDeptName = ''
+  crossStreetTransferForm.transferReason = ''
+  crossStreetTransferForm.crossBoundaryDescription = ''
+  crossStreetTransferForm.impactRange = ''
+  crossStreetTransferForm.urgencyLevel = row.priority || 'MEDIUM'
+  crossStreetTransferForm.coordinationNote = ''
+  crossStreetTransferForm.attachments = []
+
+  currentTransferEvent.value = row
+
+  crossStreetTransferDialogVisible.value = true
+
+  await loadRecommendedTargets(eventId)
+  await loadCooperationDeptTree()
+}
+
+async function loadRecommendedTargets(eventId) {
+  recommendedTargetsLoading.value = true
+  try {
+    const res = await getRecommendedTargets(eventId, crossStreetTransferForm.targetType)
+    recommendedTargets.value = res.data || []
+  } catch (e) {
+    ElMessage.error('加载推荐机构失败')
+  } finally {
+    recommendedTargetsLoading.value = false
+  }
+}
+
+async function loadCooperationDeptTree() {
+  cooperationDeptTreeLoading.value = true
+  try {
+    const res = await getCooperationDeptTree({ targetType: crossStreetTransferForm.targetType })
+    cooperationDeptTree.value = res.data || []
+  } catch (e) {
+    ElMessage.error('加载协作机构失败')
+  } finally {
+    cooperationDeptTreeLoading.value = false
+  }
+}
+
+function onTargetTypeChange() {
+  loadRecommendedTargets(crossStreetTransferForm.eventId)
+  loadCooperationDeptTree()
+}
+
+function selectRecommendedTarget(target) {
+  crossStreetTransferForm.targetDeptId = target.id
+  crossStreetTransferForm.targetDeptName = target.name
+}
+
+function onDeptNodeClick(node, data) {
+  crossStreetTransferForm.targetDeptId = data.id
+  crossStreetTransferForm.targetDeptName = data.name
+}
+
+async function submitTransfer() {
+  if (!crossStreetTransferForm.targetDeptId) {
+    ElMessage.warning('请选择协作机构')
+    return
+  }
+  if (!crossStreetTransferForm.transferReason || crossStreetTransferForm.transferReason.trim() === '') {
+    ElMessage.warning('请填写转派原因')
+    return
+  }
+
+  transferSubmitting.value = true
+  try {
+    await applyTransfer({
+      eventId: crossStreetTransferForm.eventId,
+      targetDeptId: crossStreetTransferForm.targetDeptId,
+      targetType: crossStreetTransferForm.targetType,
+      transferReason: crossStreetTransferForm.transferReason,
+      crossBoundaryDescription: crossStreetTransferForm.crossBoundaryDescription,
+      impactRange: crossStreetTransferForm.impactRange,
+      urgencyLevel: crossStreetTransferForm.urgencyLevel,
+      coordinationNote: crossStreetTransferForm.coordinationNote,
+      attachments: crossStreetTransferForm.attachments
+    })
+    ElMessage.success('跨街道流转申请已提交，等待审批')
+    crossStreetTransferDialogVisible.value = false
+    fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '提交失败')
+  } finally {
+    transferSubmitting.value = false
+  }
+}
+
+async function handleViewTransferHistory(row) {
+  const eventId = row.id || row.eventId
+  try {
+    const res = await getEventTransferHistory(eventId)
+    transferHistoryList.value = res.data || []
+    transferHistoryDialogVisible.value = true
+  } catch (e) {
+    ElMessage.error('加载流转历史失败')
+  }
+}
+
+async function viewTransferTrace(transfer) {
+  try {
+    const res = await getTransferTrace(transfer.id)
+    transferTraceList.value = res.data || []
+    transferTraceDialogVisible.value = true
+  } catch (e) {
+    ElMessage.error('加载流转追溯链失败')
+  }
+}
+
+function getTransferStatusTagType(status) {
+  const map = {
+    PENDING_APPROVAL: 'warning',
+    APPROVED: 'primary',
+    TRANSFERRED: 'primary',
+    ACCEPTED: 'info',
+    PROCESSING: 'info',
+    COMPLETED: 'success',
+    REJECTED: 'danger'
+  }
+  return map[status] || 'info'
+}
+
+function getTransferStatusLabel(status) {
+  const map = {
+    PENDING_APPROVAL: '待审批',
+    APPROVED: '已通过',
+    TRANSFERRED: '已转派',
+    ACCEPTED: '已接收',
+    PROCESSING: '处理中',
+    COMPLETED: '已完成',
+    REJECTED: '已驳回'
+  }
+  return map[status] || status
+}
+
+function getTargetTypeLabel(type) {
+  const map = {
+    STREET: '相邻街道',
+    BUREAU: '委办局',
+    COUNTY: '区级部门'
+  }
+  return map[type] || type
 }
 
 function getProcessDialogTitle() {
@@ -1842,6 +2293,110 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.transfer-dialog {
+  .recommend-section {
+    min-height: 80px;
+  }
+
+  .recommend-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+
+    .recommend-item {
+      background: #f7f8fa;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #ecf5ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+      }
+
+      &.active {
+        border-color: #409EFF;
+        background: #ecf5ff;
+      }
+
+      .recommend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+
+        .dept-name {
+          font-size: 14px;
+          font-weight: 500;
+          color: #303133;
+        }
+      }
+
+      .recommend-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .match-reason {
+          font-size: 12px;
+          color: #909399;
+        }
+
+        .dept-phone {
+          font-size: 12px;
+          color: #606266;
+        }
+      }
+    }
+  }
+
+  .dept-tree-wrapper {
+    min-height: 280px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 12px;
+
+    .dept-tree {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .tree-node {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .selected-dept-info {
+    min-height: 280px;
+    max-height: 320px;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fafafa;
+
+    .selected-card {
+      text-align: center;
+      padding: 24px 16px;
+      background: #fff;
+      border-radius: 10px;
+      border: 2px dashed #409EFF;
+
+      .selected-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 12px;
+      }
+    }
+  }
+}
+
 .nlp-dispatch-panel {
   background: linear-gradient(135deg, #f0f9ff 0%, #e8f4fd 100%);
   border: 1px solid #b3d8ff;

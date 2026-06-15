@@ -43,6 +43,18 @@ const routes = [
     ]
   },
   {
+    path: '/cross-street-transfer',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'index',
+        name: 'CrossStreetTransfer',
+        component: () => import('@/views/cross-street-transfer/index.vue'),
+        meta: { title: '跨街道协同流转', icon: 'Switch', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor', 'handler'] }
+      }
+    ]
+  },
+  {
     path: '/grid',
     component: () => import('@/layout/index.vue'),
     children: [

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gov.grid.mapper.EventCrossStreetTransferMapper">
+
+    <resultMap id="BaseResultMap" type="com.gov.grid.entity.EventCrossStreetTransfer">
+        <id column="id" property="id" />
+        <result column="event_id" property="eventId" />
+        <result column="event_no" property="eventNo" />
+        <result column="event_title" property="eventTitle" />
+        <result column="event_type" property="eventType" />
+        <result column="source_dept_id" property="sourceDeptId" />
+        <result column="source_dept_name" property="sourceDeptName" />
+        <result column="source_grid_id" property="sourceGridId" />
+        <result column="source_grid_name" property="sourceGridName" />
+        <result column="target_dept_id" property="targetDeptId" />
+        <result column="target_dept_name" property="targetDeptName" />
+        <result column="target_dept_code" property="targetDeptCode" />
+        <result column="target_type" property="targetType" />
+        <result column="transfer_reason" property="transferReason" />
+        <result column="cross_boundary_description" property="crossBoundaryDescription" />
+        <result column="impact_range" property="impactRange" />
+        <result column="status" property="status" />
+        <result column="applicant_id" property="applicantId" />
+        <result column="applicant_name" property="applicantName" />
+        <result column="applicant_time" property="applicantTime" />
+        <result column="approver_id" property="approverId" />
+        <result column="approver_name" property="approverName" />
+        <result column="approve_time" property="approveTime" />
+        <result column="approve_comment" property="approveComment" />
+        <result column="receiver_id" property="receiverId" />
+        <result column="receiver_name" property="receiverName" />
+        <result column="receive_time" property="receiveTime" />
+        <result column="handler_id" property="handlerId" />
+        <result column="handler_name" property="handlerName" />
+        <result column="process_start_time" property="processStartTime" />
+        <result column="process_end_time" property="processEndTime" />
+        <result column="process_result" property="processResult" />
+        <result column="process_description" property="processDescription" />
+        <result column="lng" property="lng" />
+        <result column="lat" property="lat" />
+        <result column="address" property="address" />
+        <result column="urgency_level" property="urgencyLevel" />
+        <result column="attachments" property="attachments" />
+        <result column="coordination_note" property="coordinationNote" />
+        <result column="trace_id" property="traceId" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <select id="selectTransferList" resultMap="BaseResultMap">
+        SELECT t.*
+        FROM event_cross_street_transfer t
+        WHERE 1=1
+        <if test="eventId != null">
+            AND t.event_id = #{eventId}
+        </if>
+        <if test="sourceDeptId != null">
+            AND t.source_dept_id = #{sourceDeptId}
+        </if>
+        <if test="targetDeptId != null">
+            AND t.target_dept_id = #{targetDeptId}
+        </if>
+        <if test="status != null and status != ''">
+            AND t.status = #{status}
+        </if>
+        <if test="targetType != null and targetType != ''">
+            AND t.target_type = #{targetType}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (t.event_title LIKE CONCAT('%', #{keyword}, '%')
+                OR t.event_no LIKE CONCAT('%', #{keyword}, '%')
+                OR t.transfer_reason LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY t.applicant_time DESC
+    </select>
+
+    <select id="selectMyInvolvedTransfers" resultMap="BaseResultMap">
+        SELECT t.*
+        FROM event_cross_street_transfer t
+        WHERE 1=1
+        <if test="status != null and status != ''">
+            AND t.status = #{status}
+        </if>
+        AND (
+            t.applicant_id = #{userId}
+            OR t.approver_id = #{userId}
+            OR t.receiver_id = #{userId}
+            OR t.handler_id = #{userId}
+            <if test="deptId != null">
+                OR t.source_dept_id = #{deptId}
+                OR t.target_dept_id = #{deptId}
+            </if>
+        )
+        ORDER BY t.applicant_time DESC
+    </select>
+
+</mapper>
