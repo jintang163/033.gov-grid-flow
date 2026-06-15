@@ -151,6 +151,18 @@ const routes = [
         meta: { title: '舆情分析', icon: 'DataAnalysis', roles: ['admin', 'supervisor', 'street_manager'] }
       }
     ]
+  },
+  {
+    path: '/event-heat-warning',
+    component: () => import('@/layout/index.vue'),
+    children: [
+      {
+        path: 'index',
+        name: 'EventHeatWarning',
+        component: () => import('@/views/event-heat-warning/index.vue'),
+        meta: { title: '事件热度预警', icon: 'Warning', roles: ['admin', 'street_manager', 'grid_leader', 'supervisor'] }
+      }
+    ]
   }
 ]
 
